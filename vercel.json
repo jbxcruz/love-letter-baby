@@ -1,7 +1,7 @@
 {
-  "installCommand": "rm -rf node_modules && npm install --legacy-peer-deps",
-  "buildCommand": "node node_modules/vite/bin/vite.js build",
-  "outputDirectory": "dist",
+  "installCommand": "",
+  "buildCommand": "",
+  "outputDirectory": "",
   "framework": "",
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
