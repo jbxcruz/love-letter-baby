@@ -1,12 +1,364 @@
-import { useRef, useState, Suspense } from 'react';
+import { useRef, useState, Suspense, useMemo, useEffect } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import PageTransition from '../common/PageTransition';
 import MenuButton from '../common/MenuButton';
-import AudioManager from '../common/AudioManager';
 import useStore from '../../store/useStore';
+
+// Firework sound manager with multiple random sounds
+function useFireworkSound() {
+  const [sounds, setSounds] = useState([]);
+  
+  useEffect(() => {
+    // Create multiple audio elements for different pop sounds
+    const soundFiles = [
+      '/audio/firework-pop1.mp3',
+      '/audio/firework-pop2.mp3',
+      '/audio/firework-pop3.mp3',
+    ];
+    
+    const audioElements = soundFiles.map(file => {
+      const audio = new Audio(file);
+      audio.volume = 0.25;
+      return audio;
+    });
+    
+    setSounds(audioElements);
+    
+    return () => {
+      audioElements.forEach(audio => {
+        audio.pause();
+        audio.src = '';
+      });
+    };
+  }, []);
+  
+  const playPop = () => {
+    if (sounds.length > 0) {
+      // Pick a random sound
+      const randomIndex = Math.floor(Math.random() * sounds.length);
+      const sound = sounds[randomIndex];
+      
+      // Clone the audio to allow overlapping sounds
+      const clone = sound.cloneNode();
+      clone.volume = 0.15 + Math.random() * 0.15; // Random volume 0.15-0.3
+      clone.playbackRate = 0.85 + Math.random() * 0.3; // Slight pitch variation
+      clone.play().catch(() => {}); // Ignore autoplay errors
+    }
+  };
+  
+  return playPop;
+}
+
+// Birthday music player - plays once only
+function BirthdayMusic() {
+  const audioRef = useRef(null);
+  const [isReady, setIsReady] = useState(false);
+  const hasStartedRef = useRef(false);
+  
+  // Initialize audio on mount
+  useEffect(() => {
+    const audio = new Audio('/audio/birthday.mp3');
+    audio.volume = 0.5;
+    audio.loop = false;
+    audio.preload = 'auto';
+    
+    audio.addEventListener('canplaythrough', () => {
+      setIsReady(true);
+    });
+    
+    audio.addEventListener('error', (e) => {
+      console.log('Audio error:', e);
+    });
+    
+    audioRef.current = audio;
+    
+    // Try to load the audio
+    audio.load();
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+  
+  // Handle playing audio
+  useEffect(() => {
+    if (!isReady || !audioRef.current || hasStartedRef.current) return;
+    
+    const tryPlay = () => {
+      if (hasStartedRef.current) return;
+      
+      audioRef.current.play()
+        .then(() => {
+          hasStartedRef.current = true;
+          console.log('Birthday music started playing');
+        })
+        .catch((error) => {
+          console.log('Autoplay blocked, will play on interaction');
+        });
+    };
+    
+    // Try to play immediately
+    tryPlay();
+    
+    // Also try on user interaction if autoplay blocked
+    const handleInteraction = () => {
+      if (!hasStartedRef.current && audioRef.current) {
+        audioRef.current.play()
+          .then(() => {
+            hasStartedRef.current = true;
+            console.log('Birthday music started on interaction');
+            // Remove listeners once played
+            document.removeEventListener('click', handleInteraction);
+            document.removeEventListener('touchstart', handleInteraction);
+            document.removeEventListener('keydown', handleInteraction);
+          })
+          .catch(() => {});
+      }
+    };
+    
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('touchstart', handleInteraction);
+    document.addEventListener('keydown', handleInteraction);
+    
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('keydown', handleInteraction);
+    };
+  }, [isReady]);
+  
+  return null;
+}
+
+// Firework trail particle
+function FireworkTrail({ position, visible }) {
+  const trailRef = useRef();
+  const trailCount = 8;
+  
+  const [positions] = useState(() => new Float32Array(trailCount * 3));
+  
+  useFrame(() => {
+    if (trailRef.current && visible) {
+      // Trail follows behind the main firework
+      for (let i = trailCount - 1; i > 0; i--) {
+        positions[i * 3] = positions[(i - 1) * 3];
+        positions[i * 3 + 1] = positions[(i - 1) * 3 + 1];
+        positions[i * 3 + 2] = positions[(i - 1) * 3 + 2];
+      }
+      positions[0] = position[0];
+      positions[1] = position[1];
+      positions[2] = position[2];
+      
+      trailRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
+  
+  if (!visible) return null;
+  
+  return (
+    <points ref={trailRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={trailCount}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.08}
+        color="#FF3333"
+        transparent
+        opacity={0.7}
+        sizeAttenuation
+        blending={THREE.AdditiveBlending}
+      />
+    </points>
+  );
+}
+
+// Heart-shaped firework explosion
+function HeartFirework({ startPosition, color, delay, playSound }) {
+  const particlesRef = useRef();
+  const particleCount = 50;
+  const [phase, setPhase] = useState('waiting'); // waiting, rising, exploding, fading
+  const [currentPos, setCurrentPos] = useState([...startPosition]);
+  const [hasPlayedSound, setHasPlayedSound] = useState(false);
+  
+  // Create heart shape directions for explosion
+  const heartDirections = useMemo(() => {
+    const dirs = [];
+    for (let i = 0; i < particleCount; i++) {
+      // Parametric heart shape
+      const t = (i / particleCount) * Math.PI * 2;
+      
+      // Heart curve formula
+      const heartX = 16 * Math.pow(Math.sin(t), 3);
+      const heartY = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      
+      // Normalize and add some randomness
+      const scale = 0.04;
+      const randomness = 0.15;
+      dirs.push({
+        x: heartX * scale + (Math.random() - 0.5) * randomness,
+        y: heartY * scale + (Math.random() - 0.5) * randomness,
+        z: (Math.random() - 0.5) * 0.3,
+        speed: 0.8 + Math.random() * 0.4,
+      });
+    }
+    return dirs;
+  }, []);
+  
+  const [positions] = useState(() => new Float32Array(particleCount * 3));
+  
+  useFrame((state) => {
+    const time = state.clock.elapsedTime;
+    const adjustedTime = time - delay;
+    
+    if (adjustedTime < 0) {
+      setPhase('waiting');
+      setHasPlayedSound(false);
+      return;
+    }
+    
+    // Cycle time for repeating fireworks (5 second cycle)
+    const cycleTime = adjustedTime % 5;
+    
+    // Reset sound flag at start of new cycle
+    if (cycleTime < 0.1) {
+      setHasPlayedSound(false);
+    }
+    
+    if (cycleTime < 1.2) {
+      // Rising phase
+      setPhase('rising');
+      const riseProgress = cycleTime / 1.2;
+      const easeOut = 1 - Math.pow(1 - riseProgress, 3);
+      const y = startPosition[1] + easeOut * 5;
+      const wobble = Math.sin(cycleTime * 20) * 0.02;
+      
+      setCurrentPos([startPosition[0] + wobble, y, startPosition[2]]);
+      
+      // All particles at same position during rise
+      for (let i = 0; i < particleCount; i++) {
+        positions[i * 3] = startPosition[0] + wobble;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = startPosition[2];
+      }
+    } else if (cycleTime < 3.5) {
+      // Heart explosion phase
+      if (!hasPlayedSound && playSound) {
+        playSound();
+        setHasPlayedSound(true);
+      }
+      setPhase('exploding');
+      const explodeProgress = (cycleTime - 1.2) / 2.3;
+      const explosionY = startPosition[1] + 5;
+      const gravity = explodeProgress * explodeProgress * 0.8;
+      const expandScale = Math.min(explodeProgress * 1.5, 1);
+      
+      for (let i = 0; i < particleCount; i++) {
+        const dir = heartDirections[i];
+        positions[i * 3] = startPosition[0] + dir.x * dir.speed * expandScale * 2;
+        positions[i * 3 + 1] = explosionY + dir.y * dir.speed * expandScale * 2 - gravity;
+        positions[i * 3 + 2] = startPosition[2] + dir.z * expandScale;
+      }
+    } else {
+      // Fade out phase
+      setPhase('fading');
+    }
+    
+    if (particlesRef.current) {
+      particlesRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
+  
+  const opacity = phase === 'fading' ? 0.3 : phase === 'exploding' ? 0.9 : 0;
+  const size = phase === 'exploding' ? 0.12 : 0.05;
+  
+  return (
+    <group>
+      {/* Trail during rising */}
+      <FireworkTrail position={currentPos} visible={phase === 'rising'} />
+      
+      {/* Rising spark */}
+      {phase === 'rising' && (
+        <mesh position={currentPos}>
+          <sphereGeometry args={[0.06, 8, 8]} />
+          <meshBasicMaterial color="#FF6666" transparent opacity={0.9} />
+          <pointLight color="#FF3333" intensity={0.5} distance={2} />
+        </mesh>
+      )}
+      
+      {/* Heart explosion particles */}
+      {(phase === 'exploding' || phase === 'fading') && (
+        <points ref={particlesRef}>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              count={particleCount}
+              array={positions}
+              itemSize={3}
+            />
+          </bufferGeometry>
+          <pointsMaterial
+            size={size}
+            color={color}
+            transparent
+            opacity={opacity}
+            sizeAttenuation
+            blending={THREE.AdditiveBlending}
+          />
+        </points>
+      )}
+      
+      {/* Glow light during explosion */}
+      {phase === 'exploding' && (
+        <pointLight 
+          position={[startPosition[0], startPosition[1] + 5, startPosition[2]]} 
+          color={color} 
+          intensity={1} 
+          distance={5} 
+        />
+      )}
+    </group>
+  );
+}
+
+// Fireworks display - multiple heart fireworks
+function Fireworks() {
+  const playPop = useFireworkSound();
+  
+  const fireworksConfig = [
+    { position: [-3.5, -3, -4], color: '#FF69B4', delay: 0 },      // Hot Pink
+    { position: [3.5, -3, -5], color: '#FF1493', delay: 1.2 },     // Deep Pink
+    { position: [-1.5, -3, -6], color: '#FFB6C1', delay: 2.4 },    // Light Pink
+    { position: [2, -3, -4], color: '#FF6B6B', delay: 0.6 },       // Coral Red
+    { position: [0, -3, -7], color: '#FF69B4', delay: 1.8 },       // Hot Pink
+    { position: [-2.5, -3, -5], color: '#FF1493', delay: 3 },      // Deep Pink
+    { position: [1, -3, -6], color: '#FF85A2', delay: 3.6 },       // Rose Pink
+  ];
+  
+  return (
+    <group>
+      {fireworksConfig.map((fw, i) => (
+        <HeartFirework
+          key={i}
+          startPosition={fw.position}
+          color={fw.color}
+          delay={fw.delay}
+          playSound={playPop}
+        />
+      ))}
+    </group>
+  );
+}
 
 // Candle flame component - fixed positioning
 function CandleFlame({ position }) {
@@ -231,6 +583,7 @@ function CakeScene() {
       <Suspense fallback={null}>
         <BirthdayCake />
         <Sparkles />
+        <Fireworks />
       </Suspense>
       
       <OrbitControls 
@@ -257,7 +610,8 @@ export default function HoneybunchPage() {
   
   return (
     <PageTransition className="bg-romantic-gradient">
-      <AudioManager track="birthday" volume={0.5} />
+      {/* Birthday music - plays once */}
+      <BirthdayMusic />
       
       {/* Full screen 3D Canvas - behind everything */}
       <div 
@@ -321,7 +675,7 @@ export default function HoneybunchPage() {
               textShadow: '0 2px 10px rgba(255,255,255,0.5)',
             }}
           >
-            Bea Lorraine Abenes
+            My Honeybunch!
           </p>
         </motion.div>
         
