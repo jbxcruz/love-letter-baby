@@ -675,7 +675,7 @@ export default function HoneybunchPage() {
               textShadow: '0 2px 10px rgba(255,255,255,0.5)',
             }}
           >
-            My Honeybunch!
+            To My Honeybunch Sugarplum!
           </p>
         </motion.div>
         
