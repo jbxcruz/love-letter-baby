@@ -1,410 +1,667 @@
-import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { motion } from 'framer-motion';
+import { useState, useMemo, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
 import PageTransition from '../common/PageTransition';
 import MenuButton from '../common/MenuButton';
-import AudioManager from '../common/AudioManager';
+import { useGlobalMusic } from '../home/HomePage';
 import useStore from '../../store/useStore';
-import gameConfig from '../../data/gameConfig';
 
-// 3D Tulip component
-function Tulip({ position }) {
-  const groupRef = useRef();
+// ============ QUIZ QUESTIONS ============
+const allQuestions = [
+  {
+    question: "Asa ta first nag kita hehehehe?",
+    options: ["SM", "Plaza", "7/11", "Robinsons"],
+    correct: 2,
+  },
+  {
+    question: "When man akoa birthday hehehe",
+    options: ["January 18", "January 15", "January 16", "January 08"],
+    correct: 0,
+  },
+  {
+    question: "What is my favorite food?",
+    options: ["Pizza", "Sushi", "Pasta", "Bealat nimo hehehe"],
+    correct: 3,
+  },
+  {
+    question: "My favorite movie genre?",
+    options: ["Drama", "Comedy", "Action", "Horror"],
+    correct: 3,
+  },
+  {
+    question: "What is my middle name?",
+    options: ["Marcos", "Perales", "Cerdena", "Cruz"],
+    correct: 1,
+  },
+  {
+    question: "Favorite Color nako heheheh",
+    options: ["Blue", "Red", "White", "Gray"],
+    correct: 2,
+  },
+  {
+    question: "What do I like to do if free ko?heheheeh",
+    options: ["Sleep", "Go out", "Watch movies", "Spend time with you"],
+    correct: 3,
+  },
+  {
+    question: "unsa akoa ganahan nga perme gunitan nako saimo hehehe?",
+    options: ["Ears", "Tummy", "Feet", "Armpits"],
+    correct: 1,
+  },
+  {
+    question: "What is my zodiac sign?",
+    options: ["Aries", "Taurus", "Gemini", "Capricorn"],
+    correct: 3,
+  },
+  {
+    question: "kani bi hehehe asa ta first nag date?",
+    options: ["Movie Date", "Dinner Date", "Laag", "Lodge HAHAHA"],
+    correct: 0,
+  },
+  {
+    question: "asa mn ko perme mo gunit saimo kada laag nato hehehe",
+    options: ["Braso", "Kamot", "Waist", "Boobies hehehe"],
+    correct: 0,
+  },
+  {
+    question: "What is my favorite flower?",
+    options: ["Rose", "Tulip", "Sunflower", "Lily"],
+    correct: 0,
+  },
+  {
+    question: "What is my dream vacation?",
+    options: ["Paris with you", "Japan with you", "Maldives with you", "Korea with you"],
+    correct: 1,
+  },
+  {
+    question: "What makes me happy hehehe?",
+    options: ["You", "Food", "Sleep", "Shopping"],
+    correct: 0,
+  },
+  {
+    question: "What is my love language?",
+    options: ["Quality Time", "Words", "Gifts", "Touch"],
+    correct: 0,
+  },
+  {
+    question: "What is my favorite dessert?",
+    options: ["Ice cream", "Cake", "Bealalats nimo hehehe", "Cookies"],
+    correct: 2,
+  },
+  {
+    question: "What do I value most?",
+    options: ["Honesty", "Loyalty", "Humor", "Intelligence"],
+    correct: 0,
+  },
+  {
+    question: "What is my favorite time of day?",
+    options: ["Morning", "Afternoon", "Evening", "Night"],
+    correct: 0,
+  },
+  {
+    question: "What song reminds you of us?",
+    options: ["Our Song", "Your Song", "Love Song", "Any Song"],
+    correct: 0,
+  },
+  {
+    question: "How many kids do I want HAHAHAHAH?",
+    options: ["2", "3", "1", "4"],
+    correct: 0,
+  },
+];
+
+// ============ HEART DISPLAY ============
+function Hearts({ lives, shake }) {
+  return (
+    <motion.div 
+      className="flex gap-2"
+      animate={shake ? { x: [0, -10, 10, -10, 10, 0] } : {}}
+      transition={{ duration: 0.5 }}
+    >
+      {[...Array(3)].map((_, i) => (
+        <motion.span
+          key={i}
+          initial={{ scale: 1 }}
+          animate={{ 
+            scale: i < lives ? 1 : 0.8,
+            opacity: i < lives ? 1 : 0.3,
+          }}
+          className="text-2xl"
+        >
+          {i < lives ? '❤️' : '🖤'}
+        </motion.span>
+      ))}
+    </motion.div>
+  );
+}
+
+// ============ 3D HEART FIREWORK (Honeybunch style, no trail) ============
+function HeartFirework3D({ trigger }) {
+  const particlesRef = useRef();
+  const particleCount = 50;
+  const startTimeRef = useRef(null);
+  const [isActive, setIsActive] = useState(false);
   
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Gentle swaying
-      groupRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 2 + position[0]) * 0.05;
-    }
-  });
-  
-  return (
-    <group ref={groupRef} position={position}>
-      {/* Stem */}
-      <mesh position={[0, 0.15, 0]}>
-        <cylinderGeometry args={[0.02, 0.02, 0.3, 8]} />
-        <meshStandardMaterial color="#228B22" />
-      </mesh>
-      
-      {/* Tulip petals */}
-      <group position={[0, 0.35, 0]}>
-        {[0, 1, 2, 3, 4].map((i) => {
-          const angle = (i / 5) * Math.PI * 2;
-          return (
-            <mesh 
-              key={i} 
-              position={[Math.cos(angle) * 0.05, 0, Math.sin(angle) * 0.05]}
-              rotation={[0.3, angle, 0]}
-            >
-              <sphereGeometry args={[0.08, 8, 8, 0, Math.PI]} />
-              <meshStandardMaterial color="#9B59B6" />
-            </mesh>
-          );
-        })}
-      </group>
-    </group>
-  );
-}
-
-// 3D Flower (decorative)
-function Flower({ position, color }) {
-  return (
-    <group position={position}>
-      {/* Center */}
-      <mesh position={[0, 0.1, 0]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
-        <meshStandardMaterial color="#FFD700" />
-      </mesh>
-      
-      {/* Petals */}
-      {[0, 1, 2, 3, 4, 5].map((i) => {
-        const angle = (i / 6) * Math.PI * 2;
-        return (
-          <mesh 
-            key={i} 
-            position={[Math.cos(angle) * 0.08, 0.1, Math.sin(angle) * 0.08]}
-          >
-            <sphereGeometry args={[0.04, 8, 8]} />
-            <meshStandardMaterial color={color} />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
-// Character component
-function Character({ position, isMoving }) {
-  const groupRef = useRef();
-  
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Bouncy animation when moving
-      if (isMoving) {
-        groupRef.current.position.y = position.y + Math.abs(Math.sin(state.clock.elapsedTime * 10)) * 0.1;
-      } else {
-        groupRef.current.position.y = position.y;
-      }
-    }
-  });
-  
-  return (
-    <group ref={groupRef} position={[position.x, position.y, position.z]}>
-      {/* Body */}
-      <mesh position={[0, 0.2, 0]}>
-        <sphereGeometry args={[0.25, 16, 16]} />
-        <meshStandardMaterial color="#F5D0D0" />
-      </mesh>
-      
-      {/* Head */}
-      <mesh position={[0, 0.55, 0]}>
-        <sphereGeometry args={[0.2, 16, 16]} />
-        <meshStandardMaterial color="#FFE4C4" />
-      </mesh>
-      
-      {/* Simple face features */}
-      <mesh position={[-0.07, 0.58, 0.17]}>
-        <sphereGeometry args={[0.03, 8, 8]} />
-        <meshBasicMaterial color="#4A4A4A" />
-      </mesh>
-      <mesh position={[0.07, 0.58, 0.17]}>
-        <sphereGeometry args={[0.03, 8, 8]} />
-        <meshBasicMaterial color="#4A4A4A" />
-      </mesh>
-      
-      {/* Smile */}
-      <mesh position={[0, 0.5, 0.18]} rotation={[0, 0, 0]}>
-        <torusGeometry args={[0.05, 0.015, 8, 16, Math.PI]} />
-        <meshBasicMaterial color="#C76B6B" />
-      </mesh>
-      
-      {/* Little feet */}
-      <mesh position={[-0.1, -0.05, 0]}>
-        <sphereGeometry args={[0.08, 8, 8]} />
-        <meshStandardMaterial color="#E8A0A0" />
-      </mesh>
-      <mesh position={[0.1, -0.05, 0]}>
-        <sphereGeometry args={[0.08, 8, 8]} />
-        <meshStandardMaterial color="#E8A0A0" />
-      </mesh>
-    </group>
-  );
-}
-
-// Trail particle
-function TrailParticle({ position, opacity }) {
-  return (
-    <mesh position={position}>
-      <sphereGeometry args={[0.05, 8, 8]} />
-      <meshBasicMaterial color="#D5A6E6" transparent opacity={opacity} />
-    </mesh>
-  );
-}
-
-// Ground plane
-function Ground() {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-      <planeGeometry args={[50, 50]} />
-      <meshStandardMaterial color="#7CB889" />
-    </mesh>
-  );
-}
-
-// Sun
-function Sun() {
-  return (
-    <group position={[8, 6, -5]}>
-      <mesh>
-        <sphereGeometry args={[1.5, 32, 32]} />
-        <meshBasicMaterial color="#FFB366" />
-      </mesh>
-      <pointLight color="#FFB366" intensity={1} distance={50} />
-    </group>
-  );
-}
-
-// Main game scene
-function GameScene({ characterPos, setCharacterPos, tulips, setTulips, trail, setTrail, isMovingRef }) {
-  const { camera, gl } = useThree();
-  const targetPos = useRef(null);
-  
-  // Decorative flowers
-  const flowers = useRef([]);
-  if (flowers.current.length === 0) {
-    for (let i = 0; i < 30; i++) {
-      flowers.current.push({
-        position: [
-          (Math.random() - 0.5) * 15,
-          0,
-          (Math.random() - 0.5) * 15,
-        ],
-        color: gameConfig.environment.flowerColors[
-          Math.floor(Math.random() * gameConfig.environment.flowerColors.length)
-        ],
+  // Create heart shape directions
+  const heartDirections = useMemo(() => {
+    const dirs = [];
+    for (let i = 0; i < particleCount; i++) {
+      const t = (i / particleCount) * Math.PI * 2;
+      const heartX = 16 * Math.pow(Math.sin(t), 3);
+      const heartY = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      const scale = 0.06;
+      const randomness = 0.2;
+      dirs.push({
+        x: heartX * scale + (Math.random() - 0.5) * randomness,
+        y: heartY * scale + (Math.random() - 0.5) * randomness,
+        z: (Math.random() - 0.5) * 0.5,
+        speed: 0.8 + Math.random() * 0.4,
       });
     }
-  }
+    return dirs;
+  }, []);
   
-  // Handle click to move
-  const handleClick = useCallback((event) => {
-    // Get click position in normalized device coordinates
-    const rect = gl.domElement.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    // Create a raycaster
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
-    
-    // Create a ground plane for intersection
-    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const intersectPoint = new THREE.Vector3();
-    
-    raycaster.ray.intersectPlane(groundPlane, intersectPoint);
-    
-    if (intersectPoint) {
-      // Clamp to bounds
-      const clampedX = Math.max(-7, Math.min(7, intersectPoint.x));
-      const clampedZ = Math.max(-7, Math.min(7, intersectPoint.z));
-      
-      targetPos.current = { x: clampedX, z: clampedZ };
-      isMovingRef.current = true;
+  const [positions] = useState(() => new Float32Array(particleCount * 3));
+  const [sizes] = useState(() => {
+    const s = new Float32Array(particleCount);
+    for (let i = 0; i < particleCount; i++) {
+      s[i] = 0.1 + Math.random() * 0.1;
     }
-  }, [camera, gl, isMovingRef]);
-  
-  useEffect(() => {
-    const handleTouchEnd = (e) => {
-      if (e.changedTouches.length > 0) {
-        const touch = e.changedTouches[0];
-        handleClick({ clientX: touch.clientX, clientY: touch.clientY });
-      }
-    };
-    
-    gl.domElement.addEventListener('click', handleClick);
-    gl.domElement.addEventListener('touchend', handleTouchEnd);
-    
-    return () => {
-      gl.domElement.removeEventListener('click', handleClick);
-      gl.domElement.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [gl, handleClick]);
-  
-  useFrame((state, delta) => {
-    if (targetPos.current && isMovingRef.current) {
-      const dx = targetPos.current.x - characterPos.x;
-      const dz = targetPos.current.z - characterPos.z;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-      
-      if (distance > 0.1) {
-        const speed = 3;
-        const moveX = (dx / distance) * speed * delta;
-        const moveZ = (dz / distance) * speed * delta;
-        
-        const newPos = {
-          x: characterPos.x + moveX,
-          y: 0,
-          z: characterPos.z + moveZ,
-        };
-        
-        setCharacterPos(newPos);
-        
-        // Add trail
-        if (Math.random() < 0.3) {
-          setTrail(prev => [...prev.slice(-20), { 
-            position: [newPos.x, 0.05, newPos.z],
-            time: state.clock.elapsedTime,
-          }]);
-          
-          // Maybe spawn tulip
-          if (Math.random() < gameConfig.trail.tulipSpawnRate) {
-            setTulips(prev => {
-              const newTulips = [...prev, {
-                position: [
-                  newPos.x + (Math.random() - 0.5) * 0.3,
-                  0,
-                  newPos.z + (Math.random() - 0.5) * 0.3,
-                ],
-              }];
-              // Limit tulips
-              if (newTulips.length > gameConfig.tulip.maxTulips) {
-                return newTulips.slice(-gameConfig.tulip.maxTulips);
-              }
-              return newTulips;
-            });
-          }
-        }
-      } else {
-        isMovingRef.current = false;
-        targetPos.current = null;
-      }
-    }
-    
-    // Fade old trail particles
-    setTrail(prev => prev.filter(t => state.clock.elapsedTime - t.time < 2));
+    return s;
   });
   
+  // Watch for trigger changes
+  useState(() => {
+    if (trigger > 0) {
+      setIsActive(true);
+      startTimeRef.current = null;
+    }
+  });
+  
+  useFrame((state) => {
+    if (!isActive || !particlesRef.current) return;
+    
+    if (startTimeRef.current === null) {
+      startTimeRef.current = state.clock.elapsedTime;
+    }
+    
+    const elapsed = state.clock.elapsedTime - startTimeRef.current;
+    
+    if (elapsed > 2) {
+      setIsActive(false);
+      // Reset positions
+      for (let i = 0; i < particleCount; i++) {
+        positions[i * 3] = 0;
+        positions[i * 3 + 1] = 0;
+        positions[i * 3 + 2] = 0;
+      }
+      particlesRef.current.geometry.attributes.position.needsUpdate = true;
+      return;
+    }
+    
+    const expandScale = Math.min(elapsed * 2, 1);
+    const gravity = elapsed * elapsed * 0.3;
+    const fade = Math.max(0, 1 - elapsed / 2);
+    
+    for (let i = 0; i < particleCount; i++) {
+      const dir = heartDirections[i];
+      positions[i * 3] = dir.x * dir.speed * expandScale * 3;
+      positions[i * 3 + 1] = dir.y * dir.speed * expandScale * 3 - gravity;
+      positions[i * 3 + 2] = dir.z * expandScale;
+    }
+    
+    particlesRef.current.geometry.attributes.position.needsUpdate = true;
+    particlesRef.current.material.opacity = fade;
+  });
+  
+  // Reset when trigger changes
+  useMemo(() => {
+    if (trigger > 0) {
+      setIsActive(true);
+      startTimeRef.current = null;
+    }
+  }, [trigger]);
+  
+  return (
+    <points ref={particlesRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={particleCount}
+          array={positions}
+          itemSize={3}
+        />
+        <bufferAttribute
+          attach="attributes-size"
+          count={particleCount}
+          array={sizes}
+          itemSize={1}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.15}
+        color="#FF4D6D"
+        transparent
+        opacity={1}
+        sizeAttenuation
+        blending={THREE.AdditiveBlending}
+      />
+    </points>
+  );
+}
+
+function FireworkScene({ trigger }) {
   return (
     <>
-      {/* Lighting */}
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
-      
-      {/* Sun */}
-      <Sun />
-      
-      {/* Ground */}
-      <Ground />
-      
-      {/* Decorative flowers */}
-      {flowers.current.map((flower, i) => (
-        <Flower key={`flower-${i}`} position={flower.position} color={flower.color} />
-      ))}
-      
-      {/* Trail */}
-      {trail.map((t, i) => (
-        <TrailParticle 
-          key={`trail-${i}`} 
-          position={t.position}
-          opacity={0.5}
-        />
-      ))}
-      
-      {/* Tulips */}
-      {tulips.map((tulip, i) => (
-        <Tulip key={`tulip-${i}`} position={tulip.position} />
-      ))}
-      
-      {/* Character */}
-      <Character 
-        position={characterPos} 
-        isMoving={isMovingRef.current}
-      />
+      <ambientLight intensity={0.3} />
+      <HeartFirework3D trigger={trigger} />
     </>
   );
 }
 
-export default function ILoveYouPage() {
-  const unlockAll = useStore((state) => state.unlockAll);
-  
-  const [characterPos, setCharacterPos] = useState({ x: 0, y: 0, z: 0 });
-  const [tulips, setTulips] = useState([]);
-  const [trail, setTrail] = useState([]);
-  const isMovingRef = useRef(false);
-  
-  const handleMenuClick = () => {
-    unlockAll();
+// ============ QUESTION CARD ============
+function QuestionCard({ question, options, onAnswer, questionNumber, totalQuestions, correctIndex }) {
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [showResult, setShowResult] = useState(false);
+
+  const handleClick = (index) => {
+    if (showResult) return;
+    
+    setSelectedIndex(index);
+    setShowResult(true);
+    
+    const isCorrect = index === correctIndex;
+    
+    // Notify parent after delay
+    setTimeout(() => {
+      onAnswer(index, isCorrect);
+    }, 800);
   };
-  
+
+  const getButtonStyle = (index) => {
+    if (!showResult) {
+      return {
+        background: 'rgba(255,255,255,0.9)',
+        color: '#C76B6B',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+      };
+    }
+    
+    // Only highlight the selected button
+    if (index === selectedIndex) {
+      const isCorrect = selectedIndex === correctIndex;
+      if (isCorrect) {
+        return {
+          background: '#48BB78',
+          color: 'white',
+          boxShadow: '0 4px 20px rgba(72, 187, 120, 0.5)',
+        };
+      } else {
+        return {
+          background: '#F56565',
+          color: 'white',
+          boxShadow: '0 4px 20px rgba(245, 101, 101, 0.5)',
+        };
+      }
+    }
+    
+    // Other buttons stay normal
+    return {
+      background: 'rgba(255,255,255,0.9)',
+      color: '#C76B6B',
+      boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+    };
+  };
+
   return (
-    <PageTransition>
-      <AudioManager track="game" volume={0.4} />
-      
-      {/* Sky gradient background */}
-      <div 
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(180deg, 
-            ${gameConfig.environment.skyGradient.top} 0%, 
-            ${gameConfig.environment.skyGradient.middle} 50%, 
-            ${gameConfig.environment.skyGradient.bottom} 100%
-          )`,
-        }}
-      />
-      
-      {/* 3D Game Canvas */}
-      <div className="absolute inset-0">
-        <Canvas
-          camera={{ position: [0, 8, 10], fov: 50 }}
-          gl={{ alpha: true, antialias: true }}
-          shadows
-        >
-          <Suspense fallback={null}>
-            <GameScene 
-              characterPos={characterPos}
-              setCharacterPos={setCharacterPos}
-              tulips={tulips}
-              setTulips={setTulips}
-              trail={trail}
-              setTrail={setTrail}
-              isMovingRef={isMovingRef}
-            />
-          </Suspense>
-        </Canvas>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="w-full max-w-md mx-auto"
+    >
+      {/* Question number */}
+      <div className="text-center mb-4">
+        <span className="text-white/70 text-sm">
+          Question {questionNumber} of {totalQuestions}
+        </span>
       </div>
-      
-      {/* UI Overlay */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Title */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="absolute top-4 left-0 right-0 text-center"
+
+      {/* Question */}
+      <div 
+        className="p-6 rounded-2xl mb-6"
+        style={{
+          background: 'rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.2)',
+        }}
+      >
+        <h2 className="font-body text-xl md:text-2xl text-white text-center">
+          {question}
+        </h2>
+      </div>
+
+      {/* Options */}
+      <div className="grid grid-cols-2 gap-3">
+        {options.map((option, index) => (
+          <motion.button
+            key={index}
+            whileHover={!showResult ? { scale: 1.03 } : {}}
+            whileTap={!showResult ? { scale: 0.97 } : {}}
+            onClick={() => handleClick(index)}
+            disabled={showResult}
+            className="p-4 rounded-xl font-body text-lg transition-all"
+            style={getButtonStyle(index)}
+          >
+            {option}
+          </motion.button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ============ FINAL QUESTION ============
+function FinalQuestion({ onYes }) {
+  const [noScale, setNoScale] = useState(1);
+  const [noClicks, setNoClicks] = useState(0);
+
+  const handleNoClick = () => {
+    setNoClicks(prev => prev + 1);
+    setNoScale(prev => Math.max(prev * 0.7, 0.1));
+  };
+
+  const noVisible = noScale > 0.15;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="w-full max-w-md mx-auto text-center"
+    >
+      <div 
+        className="p-8 rounded-2xl mb-8"
+        style={{
+          background: 'rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.2)',
+        }}
+      >
+        <h2 className="font-script text-4xl md:text-5xl text-white">
+          Do you love me?
+        </h2>
+      </div>
+
+      <div className="flex justify-center items-center gap-6">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onYes}
+          className="px-10 py-4 rounded-2xl font-body text-2xl font-bold"
+          style={{
+            background: 'linear-gradient(135deg, #FF6B8A, #FF8E9E)',
+            color: 'white',
+            boxShadow: '0 6px 25px rgba(255, 107, 138, 0.4)',
+          }}
         >
-          <h1 className="font-script text-3xl md:text-4xl text-white drop-shadow-lg">
-            I Love You, Bea
-          </h1>
-        </motion.div>
-        
-        {/* Instructions */}
+          YES
+        </motion.button>
+
+        {noVisible && (
+          <motion.button
+            animate={{ scale: noScale }}
+            whileHover={{ scale: noScale * 1.05 }}
+            whileTap={{ scale: noScale * 0.95 }}
+            onClick={handleNoClick}
+            className="px-8 py-3 rounded-xl font-body text-lg"
+            style={{
+              background: 'rgba(150,150,150,0.5)',
+              color: 'white',
+              transformOrigin: 'center',
+            }}
+          >
+            No
+          </motion.button>
+        )}
+      </div>
+
+      {noClicks > 0 && noVisible && (
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="absolute top-16 left-0 right-0 text-center text-white/80 text-sm"
+          className="mt-6 text-white/60 text-sm"
         >
-          Tap anywhere to walk and plant tulips
+          {noClicks === 1 && "Are you sure?"}
+          {noClicks === 2 && "Please think again..."}
+          {noClicks === 3 && "The button is getting smaller..."}
+          {noClicks >= 4 && "Just click YES already!"}
         </motion.p>
-        
-        {/* Menu button */}
-        <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-auto">
-          <MenuButton 
-            onClick={handleMenuClick}
-            label="Back Menu"
-          />
+      )}
+
+      {!noVisible && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-6 text-white/80 text-lg"
+        >
+          Looks like YES is the only option now!
+        </motion.p>
+      )}
+    </motion.div>
+  );
+}
+
+// ============ RESULT SCREENS ============
+function WinScreen({ onComplete }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center"
+    >
+      <h2 
+        className="font-script text-5xl md:text-6xl mb-4"
+        style={{ color: '#FFE4E9' }}
+      >
+        I Love You More, Baby!
+      </h2>
+      
+      <p className="text-white/80 text-lg mb-8 max-w-md mx-auto">
+        Thank you for saying yes! You make my heart so happy!
+      </p>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1 }}
+      >
+        <MenuButton onClick={onComplete} visible={true} delay={0} />
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function GameOverScreen({ onRetry }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center"
+    >
+      <h2 
+        className="font-script text-4xl md:text-5xl mb-4"
+        style={{ color: '#FFE4E9' }}
+      >
+        Game Over
+      </h2>
+      
+      <p className="text-white/80 text-lg mb-8">
+        You ran out of hearts! Do you really know me?
+      </p>
+
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onRetry}
+        className="px-8 py-3 rounded-xl font-body text-lg"
+        style={{
+          background: 'linear-gradient(135deg, #FF6B8A, #FF8E9E)',
+          color: 'white',
+          boxShadow: '0 4px 20px rgba(255, 107, 138, 0.3)',
+        }}
+      >
+        Try Again
+      </motion.button>
+    </motion.div>
+  );
+}
+
+// ============ MAIN PAGE ============
+export default function ILoveYouPage() {
+  const [gameState, setGameState] = useState('playing');
+  const [lives, setLives] = useState(3);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [shakeHearts, setShakeHearts] = useState(false);
+  const [fireworkTrigger, setFireworkTrigger] = useState(0);
+  const [questionKey, setQuestionKey] = useState(0); // Key to force re-render question
+  const unlockAll = useStore((state) => state.unlockAll);
+
+  // Randomly select 15 questions
+  const questions = useMemo(() => {
+    const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 15);
+  }, []);
+
+  // Function to shuffle options for current question
+  const getShuffledQuestion = (questionData) => {
+    const correctAnswer = questionData.options[questionData.correct];
+    const shuffledOptions = [...questionData.options].sort(() => Math.random() - 0.5);
+    const newCorrectIndex = shuffledOptions.indexOf(correctAnswer);
+    return {
+      ...questionData,
+      options: shuffledOptions,
+      correct: newCorrectIndex,
+    };
+  };
+
+  const [currentShuffledQuestion, setCurrentShuffledQuestion] = useState(() => 
+    getShuffledQuestion(questions[0])
+  );
+
+  useGlobalMusic('iloveyou', 0.3);
+
+  const totalQuestions = 15;
+
+  const handleAnswer = (selectedIndex, isCorrect) => {
+    if (isCorrect) {
+      // Trigger heart firework
+      setFireworkTrigger(prev => prev + 1);
+      
+      // Move to next question after delay
+      setTimeout(() => {
+        if (currentQuestionIndex >= totalQuestions - 1) {
+          setGameState('final');
+        } else {
+          const nextIndex = currentQuestionIndex + 1;
+          setCurrentQuestionIndex(nextIndex);
+          setCurrentShuffledQuestion(getShuffledQuestion(questions[nextIndex]));
+          setQuestionKey(prev => prev + 1);
+        }
+      }, 1000);
+    } else {
+      // Wrong answer - lose life
+      const newLives = lives - 1;
+      setLives(newLives);
+      
+      // Shake hearts
+      setShakeHearts(true);
+      setTimeout(() => setShakeHearts(false), 500);
+
+      if (newLives <= 0) {
+        setTimeout(() => {
+          setGameState('gameover');
+        }, 800);
+        return;
+      }
+
+      // Stay on same question but reshuffle options
+      setTimeout(() => {
+        setCurrentShuffledQuestion(getShuffledQuestion(questions[currentQuestionIndex]));
+        setQuestionKey(prev => prev + 1);
+      }, 800);
+    }
+  };
+
+  const handleFinalYes = () => {
+    setGameState('win');
+  };
+
+  const handleRetry = () => {
+    setLives(3);
+    setCurrentQuestionIndex(0);
+    setCurrentShuffledQuestion(getShuffledQuestion(questions[0]));
+    setQuestionKey(prev => prev + 1);
+    setGameState('playing');
+  };
+
+  const handleComplete = () => {
+    unlockAll();
+  };
+
+  return (
+    <PageTransition>
+      {/* Background */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+        }}
+      />
+
+      {/* 3D Heart Firework Canvas */}
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
+        <Canvas camera={{ position: [0, 0, 5], fov: 50 }} style={{ pointerEvents: 'none' }}>
+          <FireworkScene trigger={fireworkTrigger} />
+        </Canvas>
+      </div>
+
+      {/* Hearts at top-left corner */}
+      {(gameState === 'playing' || gameState === 'final') && (
+        <div className="absolute top-6 left-6 z-20">
+          <Hearts lives={lives} shake={shakeHearts} />
         </div>
+      )}
+
+      {/* Main content */}
+      <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-4 py-8">
+        
+        {/* Game content */}
+        <AnimatePresence mode="wait">
+          {gameState === 'playing' && currentShuffledQuestion && (
+            <QuestionCard
+              key={questionKey}
+              question={currentShuffledQuestion.question}
+              options={currentShuffledQuestion.options}
+              onAnswer={handleAnswer}
+              questionNumber={currentQuestionIndex + 1}
+              totalQuestions={totalQuestions}
+              correctIndex={currentShuffledQuestion.correct}
+            />
+          )}
+
+          {gameState === 'final' && (
+            <FinalQuestion onYes={handleFinalYes} />
+          )}
+
+          {gameState === 'win' && (
+            <WinScreen onComplete={handleComplete} />
+          )}
+
+          {gameState === 'gameover' && (
+            <GameOverScreen onRetry={handleRetry} />
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

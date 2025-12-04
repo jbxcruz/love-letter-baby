@@ -1,226 +1,264 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../common/PageTransition';
-import FallingHearts from '../common/FallingHearts';
 import MenuButton from '../common/MenuButton';
-import AudioManager from '../common/AudioManager';
+import { useGlobalMusic } from '../home/HomePage';
 import useStore from '../../store/useStore';
 import loveLetterText from '../../data/loveLetterText';
-import fallingPhotosData from '../../data/fallingPhotosData';
 
-// Falling photo component
-function FallingPhoto({ src, delay, duration, startX }) {
-  return (
-    <motion.div
-      initial={{ 
-        y: -150, 
-        x: startX, 
-        rotate: Math.random() * 30 - 15,
-        opacity: 0 
-      }}
-      animate={{ 
-        y: '110vh', 
-        rotate: Math.random() * 60 - 30,
-        opacity: [0, 0.7, 0.7, 0] 
-      }}
-      transition={{ 
-        duration, 
-        delay, 
-        repeat: Infinity,
-        ease: 'linear'
-      }}
-      className="absolute w-20 h-20 md:w-28 md:h-28 rounded-lg overflow-hidden shadow-lg pointer-events-none"
-      style={{ left: `${startX}%` }}
-    >
-      <img 
-        src={src} 
-        alt="" 
-        className="w-full h-full object-cover"
-        onError={(e) => {
-          e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23F5D0D0" width="100" height="100"/><text x="50%" y="50%" fill="%23C76B6B" text-anchor="middle" dy=".3em" font-size="12">Photo</text></svg>';
-        }}
-      />
-    </motion.div>
-  );
-}
-
-// Falling photos layer
-function FallingPhotos() {
-  const photos = [];
+// Credits-style scrolling text (like movie credits from bottom to top)
+function CreditsScroll({ onComplete }) {
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const animationRef = useRef(null);
+  const startTimeRef = useRef(null);
   
-  fallingPhotosData.forEach((src, index) => {
-    // Create multiple instances of each photo
-    for (let i = 0; i < 2; i++) {
-      photos.push({
-        src,
-        delay: (index * 3) + (i * 8),
-        duration: 15 + Math.random() * 5,
-        startX: Math.random() * 80 + 10,
-      });
-    }
-  });
-  
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-5">
-      {photos.map((photo, index) => (
-        <FallingPhoto key={index} {...photo} />
-      ))}
-    </div>
-  );
-}
-
-// Credits-style scrolling text
-function CreditsScroll({ onScrollEnd }) {
-  const containerRef = useRef(null);
-  const [scrollComplete, setScrollComplete] = useState(false);
+  // Total duration for the scroll animation (in ms)
+  const scrollDuration = 35000; // 35 seconds
   
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    
-    const scrollDuration = 60000; // 60 seconds for full scroll
-    const startTime = Date.now();
-    const scrollHeight = container.scrollHeight - container.clientHeight;
-    
-    let animationId;
+    startTimeRef.current = Date.now();
     
     const animate = () => {
-      const elapsed = Date.now() - startTime;
+      const elapsed = Date.now() - startTimeRef.current;
       const progress = Math.min(elapsed / scrollDuration, 1);
       
-      // Easing function for smooth scroll
-      const easeProgress = 1 - Math.pow(1 - progress, 2);
-      
-      container.scrollTop = scrollHeight * easeProgress;
+      setScrollProgress(progress);
       
       if (progress < 1) {
-        animationId = requestAnimationFrame(animate);
+        animationRef.current = requestAnimationFrame(animate);
       } else {
-        setScrollComplete(true);
-        onScrollEnd();
+        onComplete();
       }
     };
     
-    // Start animation after a short delay
-    const timeout = setTimeout(() => {
-      animationId = requestAnimationFrame(animate);
-    }, 1000);
+    animationRef.current = requestAnimationFrame(animate);
     
     return () => {
-      clearTimeout(timeout);
-      if (animationId) {
-        cancelAnimationFrame(animationId);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [onScrollEnd]);
+  }, [onComplete]);
+  
+  // Calculate translateY based on progress
+  const translateY = 50 - (scrollProgress * 130);
   
   return (
-    <div 
-      ref={containerRef}
-      className="w-full max-w-2xl mx-auto h-[60vh] overflow-y-auto overflow-x-hidden scrollbar-hide"
-      style={{ scrollBehavior: 'auto' }}
-    >
-      <div className="py-[30vh]">
+    <div className="absolute inset-0 overflow-hidden">
+      <div
+        style={{
+          transform: `translateY(${translateY}%)`,
+        }}
+        className="w-full px-6 md:px-12"
+      >
         {/* Greeting */}
-        <motion.h2
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 1 }}
-          className="font-script text-4xl md:text-5xl text-deep-rose text-center mb-12"
+        <h2
+          className="font-script text-4xl md:text-5xl text-center mb-16"
+          style={{ color: '#C76B6B' }}
         >
           {loveLetterText.greeting}
-        </motion.h2>
+        </h2>
         
         {/* Paragraphs */}
-        <div className="space-y-8 px-4">
+        <div className="space-y-10 max-w-2xl mx-auto">
           {loveLetterText.paragraphs.map((paragraph, index) => (
-            <motion.p
+            <p
               key={index}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1 + index * 0.3, duration: 0.8 }}
-              className="font-body text-lg md:text-xl text-dark-rose text-center leading-relaxed"
+              className="font-body text-lg md:text-xl text-center leading-relaxed"
+              style={{ color: '#8B5A5A' }}
             >
               {paragraph}
-            </motion.p>
+            </p>
           ))}
         </div>
         
         {/* Closing and signature */}
-        <div className="mt-16 pt-8 text-center">
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2, duration: 1 }}
-            className="font-body text-xl text-dark-rose italic mb-6"
+        <div className="mt-20 pt-10 text-center">
+          <p
+            className="font-body text-xl italic mb-8"
+            style={{ color: '#8B5A5A' }}
           >
             {loveLetterText.closing}
-          </motion.p>
+          </p>
           
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2.5, duration: 1 }}
-            className="font-script text-4xl md:text-5xl text-deep-rose"
+          <p
+            className="font-script text-4xl md:text-5xl"
+            style={{ color: '#C76B6B' }}
           >
             {loveLetterText.signature}
-          </motion.p>
+          </p>
         </div>
         
-        {/* Extra space at bottom for scroll to complete */}
-        <div className="h-[30vh]" />
+        {/* Extra space */}
+        <div className="h-[50vh]" />
       </div>
     </div>
   );
 }
 
+// Final message that stays centered
+function FinalMessage({ onMenuShow }) {
+  useEffect(() => {
+    // Show menu button immediately after final message renders
+    const timer = setTimeout(() => {
+      onMenuShow();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [onMenuShow]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="text-center px-6"
+    >
+      <p
+        className="font-body text-xl italic mb-8"
+        style={{ color: '#8B5A5A' }}
+      >
+        {loveLetterText.closing}
+      </p>
+      
+      <p
+        className="font-script text-5xl md:text-6xl"
+        style={{ color: '#C76B6B' }}
+      >
+        {loveLetterText.signature}
+      </p>
+      
+      <div className="mt-6">
+        <span className="text-3xl">💕</span>
+      </div>
+    </motion.div>
+  );
+}
+
+// Click to start screen
+function ClickToStart({ onClick }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      onClick={onClick}
+      className="absolute inset-0 z-30 flex flex-col items-center justify-center cursor-pointer"
+      style={{
+        background: 'linear-gradient(180deg, rgba(255,245,245,0.98) 0%, rgba(255,228,232,0.98) 50%, rgba(255,209,220,0.98) 100%)',
+      }}
+    >
+      <motion.div
+        animate={{ scale: [1, 1.1, 1] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="text-6xl mb-8"
+      >
+        💌
+      </motion.div>
+      
+      <h2 
+        className="font-script text-4xl md:text-5xl mb-6 text-center px-4"
+        style={{ color: '#C76B6B' }}
+      >
+        To My Pumpkinpie
+      </h2>
+      
+      <motion.p
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        className="font-body text-lg"
+        style={{ color: '#8B5A5A' }}
+      >
+        Click anywhere to start
+      </motion.p>
+      
+      <motion.div
+        animate={{ y: [0, 10, 0] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+        className="mt-8"
+      >
+        <svg 
+          width="24" 
+          height="24" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="#C76B6B" 
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <path d="M12 5v14M5 12l7 7 7-7" />
+        </svg>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function PumpkinpiePage() {
+  const [stage, setStage] = useState('start'); // 'start' | 'scrolling' | 'final'
   const [showMenu, setShowMenu] = useState(false);
   const unlockSection = useStore((state) => state.unlockSection);
   
-  const handleScrollEnd = () => {
-    setTimeout(() => {
-      setShowMenu(true);
-    }, 1500);
+  const handleStart = () => {
+    setStage('scrolling');
+  };
+  
+  const handleScrollComplete = () => {
+    setStage('final');
+  };
+  
+  const handleMenuShow = () => {
+    setShowMenu(true);
   };
   
   const handleMenuClick = () => {
     unlockSection('honeybunch');
   };
   
+  // Use same music as home page (continues playing)
+  useGlobalMusic('home', 0.3);
+  
   return (
     <PageTransition className="bg-romantic-gradient">
-      <AudioManager track="letter" volume={0.4} />
       
-      {/* Falling hearts background */}
-      <FallingHearts count={15} />
+      {/* Stage 1: Click to start */}
+      <AnimatePresence>
+        {stage === 'start' && (
+          <ClickToStart onClick={handleStart} />
+        )}
+      </AnimatePresence>
       
-      {/* Falling photos */}
-      <FallingPhotos />
-      
-      {/* Glass overlay for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cream/30 to-transparent pointer-events-none z-10" />
-      
-      {/* Main content */}
-      <div className="relative z-20 w-full h-full flex flex-col items-center justify-center px-4 py-8">
-        {/* Scroll container with letter */}
-        <div className="glass rounded-2xl p-6 md:p-8 max-w-3xl w-full mx-auto shadow-xl">
-          <CreditsScroll onScrollEnd={handleScrollEnd} />
+      {/* Stage 2: Scrolling credits */}
+      {stage === 'scrolling' && (
+        <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+          <CreditsScroll onComplete={handleScrollComplete} />
         </div>
-        
-        {/* Menu button - fades in after scroll */}
-        <div className="mt-8">
-          <AnimatePresence>
-            {showMenu && (
-              <MenuButton 
-                onClick={handleMenuClick}
-                visible={showMenu}
-                delay={0}
-              />
-            )}
-          </AnimatePresence>
+      )}
+      
+      {/* Stage 3: Final message */}
+      {stage === 'final' && (
+        <div className="relative w-full h-full flex flex-col items-center justify-center">
+          <FinalMessage onMenuShow={handleMenuShow} />
+          
+          {/* Menu button */}
+          <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <MenuButton 
+                    onClick={handleMenuClick}
+                    visible={showMenu}
+                    delay={0}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
+      )}
     </PageTransition>
   );
 }

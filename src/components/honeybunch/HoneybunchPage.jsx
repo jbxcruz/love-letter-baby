@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import PageTransition from '../common/PageTransition';
 import MenuButton from '../common/MenuButton';
+import { useGlobalMusic } from '../home/HomePage';
 import useStore from '../../store/useStore';
 
 // Firework sound manager with multiple random sounds
@@ -604,6 +605,9 @@ function CakeScene() {
 export default function HoneybunchPage() {
   const unlockSection = useStore((state) => state.unlockSection);
   
+  // Different music for this page (resets from home music)
+  useGlobalMusic('honeybunch', 0.3);
+  
   const handleMenuClick = () => {
     unlockSection('iloveyou');
   };
@@ -675,7 +679,7 @@ export default function HoneybunchPage() {
               textShadow: '0 2px 10px rgba(255,255,255,0.5)',
             }}
           >
-            To My Honeybunch Sugarplum!
+            To my only Baby Bea!
           </p>
         </motion.div>
         

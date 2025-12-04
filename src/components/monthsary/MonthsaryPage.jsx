@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../common/PageTransition';
-import FallingHearts from '../common/FallingHearts';
+import FallingRosePetals from '../common/FallingRosePetals';
 import MenuButton from '../common/MenuButton';
-import AudioManager from '../common/AudioManager';
+import { useGlobalMusic } from '../home/HomePage';
 import useStore from '../../store/useStore';
 import slideshowData from '../../data/slideshowData';
 
@@ -51,6 +51,7 @@ function Slideshow({ onLastSlide }) {
   const [imageErrors, setImageErrors] = useState({});
   
   const isLastSlide = currentIndex === slideshowData.length - 1;
+  const isFirstSlide = currentIndex === 0;
   
   useEffect(() => {
     if (isLastSlide) {
@@ -91,11 +92,8 @@ function Slideshow({ onLastSlide }) {
     const diff = touchStart - touchEnd;
     
     if (Math.abs(diff) > 50) {
-      if (diff > 0) {
-        goToNext();
-      } else {
-        goToPrev();
-      }
+      if (diff > 0) goToNext();
+      else goToPrev();
     }
     
     setTouchStart(null);
@@ -107,37 +105,53 @@ function Slideshow({ onLastSlide }) {
   
   const slideVariants = {
     enter: (direction) => ({
-      x: direction > 0 ? 300 : -300,
+      x: direction > 0 ? 500 : -500,
       opacity: 0,
+      scale: 0.9,
     }),
     center: {
       x: 0,
       opacity: 1,
+      scale: 1,
     },
     exit: (direction) => ({
-      x: direction > 0 ? -300 : 300,
+      x: direction > 0 ? -500 : 500,
       opacity: 0,
+      scale: 0.9,
     }),
   };
   
   const currentSlide = slideshowData[currentIndex];
   
   return (
-    <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}>
-      {/* Slideshow container */}
+    <motion.div 
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.2 }}
+      style={{ 
+        width: '100%', 
+        maxWidth: '600px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}
+    >
+      {/* Main slideshow frame */}
       <div 
         style={{
           position: 'relative',
+          width: '100%',
           aspectRatio: '4/3',
-          backgroundColor: 'rgba(255, 248, 240, 0.5)',
-          borderRadius: '16px',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '20px',
           overflow: 'hidden',
-          boxShadow: '0 10px 40px rgba(139, 90, 90, 0.2)',
-          marginBottom: '20px',
+          boxShadow: '0 20px 60px rgba(139, 90, 90, 0.25), 0 8px 25px rgba(0, 0, 0, 0.1)',
+          border: '4px solid rgba(255, 255, 255, 0.8)',
         }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
+        {/* Image container */}
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={currentIndex}
@@ -146,8 +160,11 @@ function Slideshow({ onLastSlide }) {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-            style={{ position: 'absolute', inset: 0 }}
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+            style={{ 
+              position: 'absolute', 
+              inset: 0,
+            }}
           >
             {imageErrors[currentIndex] ? (
               <PlaceholderImage index={currentIndex} />
@@ -155,116 +172,189 @@ function Slideshow({ onLastSlide }) {
               <img
                 src={currentSlide.image}
                 alt={`Slide ${currentIndex + 1}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'cover',
+                }}
                 onError={() => handleImageError(currentIndex)}
               />
             )}
           </motion.div>
         </AnimatePresence>
         
-        {/* Navigation arrows */}
-        <button
+        {/* Left click zone - Previous */}
+        <div
           onClick={goToPrev}
-          disabled={currentIndex === 0}
           style={{
             position: 'absolute',
-            left: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: '44px',
-            height: '44px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(255, 248, 240, 0.9)',
-            backdropFilter: 'blur(4px)',
-            border: 'none',
-            cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
-            opacity: currentIndex === 0 ? 0.3 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.3s ease',
+            left: 0,
+            top: 0,
+            width: '40%',
+            height: '100%',
+            cursor: isFirstSlide ? 'default' : 'pointer',
+            zIndex: 10,
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C76B6B" strokeWidth="2">
-            <path d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
+          {/* Left indicator - shows on hover */}
+          {!isFirstSlide && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              style={{
+                position: 'absolute',
+                left: '16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C76B6B" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M15 19l-7-7 7-7" />
+              </svg>
+            </motion.div>
+          )}
+        </div>
         
-        <button
+        {/* Right click zone - Next */}
+        <div
           onClick={goToNext}
-          disabled={currentIndex === slideshowData.length - 1}
           style={{
             position: 'absolute',
-            right: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: '44px',
-            height: '44px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(255, 248, 240, 0.9)',
-            backdropFilter: 'blur(4px)',
-            border: 'none',
-            cursor: currentIndex === slideshowData.length - 1 ? 'not-allowed' : 'pointer',
-            opacity: currentIndex === slideshowData.length - 1 ? 0.3 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.3s ease',
+            right: 0,
+            top: 0,
+            width: '40%',
+            height: '100%',
+            cursor: isLastSlide ? 'default' : 'pointer',
+            zIndex: 10,
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C76B6B" strokeWidth="2">
-            <path d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+          {/* Right indicator - shows on hover */}
+          {!isLastSlide && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              style={{
+                position: 'absolute',
+                right: '16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C76B6B" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+            </motion.div>
+          )}
+        </div>
+        
+        {/* Gradient overlay at bottom for caption */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '120px',
+          background: 'linear-gradient(transparent, rgba(0,0,0,0.5))',
+          pointerEvents: 'none',
+        }} />
+        
+        {/* Caption overlay */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            style={{
+              position: 'absolute',
+              bottom: '20px',
+              left: '24px',
+              right: '24px',
+              textAlign: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <p style={{ 
+              fontFamily: 'Cormorant Garamond, serif', 
+              fontSize: 'clamp(16px, 4vw, 22px)', 
+              color: 'white',
+              fontStyle: 'italic',
+              margin: 0,
+              textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+              lineHeight: 1.4,
+            }}>
+              "{currentSlide.caption}"
+            </p>
+          </motion.div>
+        </AnimatePresence>
+        
+        {/* Slide counter */}
+        <div style={{
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(8px)',
+          padding: '8px 14px',
+          borderRadius: '20px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+          pointerEvents: 'none',
+        }}>
+          <span style={{
+            fontFamily: 'Cormorant Garamond, serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            color: '#C76B6B',
+          }}>
+            {currentIndex + 1} / {slideshowData.length}
+          </span>
+        </div>
       </div>
       
-      {/* Dot indicators */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
+      {/* Dot indicators below frame */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        gap: '12px', 
+        marginTop: '24px',
+      }}>
         {slideshowData.map((_, index) => (
-          <button
+          <motion.button
             key={index}
             onClick={() => goToSlide(index)}
+            whileHover={{ scale: 1.3 }}
+            whileTap={{ scale: 0.9 }}
             style={{
-              width: index === currentIndex ? '24px' : '10px',
-              height: '10px',
-              borderRadius: '5px',
+              width: index === currentIndex ? '32px' : '12px',
+              height: '12px',
+              borderRadius: '6px',
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: index === currentIndex ? '#C76B6B' : 'rgba(232, 160, 160, 0.5)',
+              backgroundColor: index === currentIndex ? '#C76B6B' : 'rgba(199, 107, 107, 0.4)',
               transition: 'all 0.3s ease',
+              boxShadow: index === currentIndex ? '0 2px 8px rgba(199, 107, 107, 0.4)' : 'none',
             }}
           />
         ))}
       </div>
-      
-      {/* Caption */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentIndex}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
-          style={{
-            backgroundColor: 'rgba(255, 248, 240, 0.9)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '12px',
-            padding: '16px 24px',
-            textAlign: 'center',
-          }}
-        >
-          <p style={{ 
-            fontFamily: 'Cormorant Garamond, serif', 
-            fontSize: '18px', 
-            color: '#8B5A5A',
-            fontStyle: 'italic',
-            margin: 0,
-          }}>
-            "{currentSlide.caption}"
-          </p>
-        </motion.div>
-      </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
@@ -280,12 +370,14 @@ export default function MonthsaryPage() {
     unlockSection('pumpkinpie');
   };
   
+  // Use same music as home page (continues playing)
+  useGlobalMusic('home', 0.3);
+  
   return (
     <PageTransition className="bg-romantic-gradient">
-      <AudioManager track="monthsary" volume={0.4} />
       
-      {/* Falling hearts background */}
-      <FallingHearts count={20} />
+      {/* Falling rose petals background */}
+      <FallingRosePetals petalCount={30} />
       
       {/* Main content */}
       <div 
@@ -298,36 +390,46 @@ export default function MonthsaryPage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '20px 16px',
-          overflow: 'hidden',
+          padding: '24px',
         }}
       >
+        {/* Title */}
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           style={{
             fontFamily: 'Great Vibes, cursive',
-            fontSize: 'clamp(28px, 7vw, 42px)',
+            fontSize: 'clamp(32px, 8vw, 52px)',
             color: '#C76B6B',
-            marginBottom: '20px',
+            marginBottom: '24px',
             textAlign: 'center',
+            textShadow: '0 2px 15px rgba(199, 107, 107, 0.3)',
           }}
         >
           Our Journey Together
         </motion.h1>
         
-        <Slideshow onLastSlide={handleLastSlide} />
+        {/* Slideshow */}
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <Slideshow onLastSlide={handleLastSlide} />
+        </div>
         
         {/* Menu button - only appears at last slide */}
-        <div style={{ marginTop: '20px', minHeight: '50px' }}>
+        <div style={{ marginTop: '24px', minHeight: '50px' }}>
           <AnimatePresence>
             {showMenu && (
-              <MenuButton 
-                onClick={handleMenuClick}
-                visible={showMenu}
-                delay={0.3}
-              />
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <MenuButton 
+                  onClick={handleMenuClick}
+                  visible={showMenu}
+                  delay={0}
+                />
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
