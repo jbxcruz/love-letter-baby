@@ -1,5 +1,4 @@
 {
-  "installCommand": "npm install && npm install -g vite",
-  "buildCommand": "vite build",
-  "outputDirectory": "dist"
+  "framework": "vite",
+  "installCommand": "rm -rf node_modules package-lock.json && npm install"
 }
