@@ -43,7 +43,7 @@ function startGlobalMusic(track, volume = 0.3) {
   
   globalAudio = new Audio(`/audio/${track}.mp3`);
   globalAudio.loop = true;
-  globalAudio.volume = volume;
+  globalAudio.volume = 0.3;
   currentTrack = track;
   globalAudio.play().catch(() => {});
 }
