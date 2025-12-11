@@ -2965,8 +2965,8 @@ function MobileControls({ keys, onJump }) {
   const handleTouchEnd = (key) => { keys.current[key] = false; };
   
   const buttonStyle = {
-    width: '75px',
-    height: '75px',
+    width: '48px',
+    height: '48px',
     background: 'rgba(255,255,255,0.25)',
     borderRadius: '10px',
     display: 'flex',
@@ -2980,8 +2980,8 @@ function MobileControls({ keys, onJump }) {
   
   const jumpButtonStyle = {
     ...buttonStyle,
-    width: '75px',
-    height: '75px',
+    width: '60px',
+    height: '60px',
     background: 'rgba(255,255,255,0.35)',
     fontSize: '13px',
     fontWeight: 'bold',
@@ -3818,7 +3818,7 @@ export default function ILoveYouPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-16 pointer-events-auto"
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-12 pointer-events-auto"
               style={{ zIndex: 60 }}
             >
               <button 
@@ -3843,16 +3843,16 @@ export default function ILoveYouPage() {
                   }
                   if (interactSoundRef.current) interactSoundRef.current();
                 }}
-                className="bg-black/60 hover:bg-black/80 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-white text-center transition-all hover:scale-105 active:scale-95"
+                className="bg-black/60 hover:bg-black/80 px-3 py-1 md:px-6 md:py-3 rounded-lg text-white text-center transition-all active:scale-95"
               >
-                <p className="text-base md:text-lg font-bold" style={{ 
+                <p className="text-sm md:text-lg font-bold" style={{ 
                   color: isNearOther.target === 'choco' ? '#FFD700' : 
                          isNearOther.target === 'jb' ? '#2D8B2D' : '#8B5CF6' 
                 }}>
                   {isNearOther.target === 'choco' ? '🐱 Choco' : 
                    isNearOther.target === 'jb' ? '💚 JB' : '💜 Bea'}
                 </p>
-                <p className="text-xs md:text-sm text-white/80">{isMobile ? 'Tap to talk' : 'Press E or tap to talk'}</p>
+                <p className="text-xs text-white/80">{isMobile ? 'Tap to talk' : 'Press E to talk'}</p>
               </button>
             </motion.div>
           )}
@@ -3865,15 +3865,17 @@ export default function ILoveYouPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-16 pointer-events-none"
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-12 pointer-events-auto"
+              style={{ zIndex: 60 }}
             >
-              <div 
-                className="bg-black/40 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-white text-center"
+              <button 
+                onClick={() => setIsPlayerSitting(true)}
+                className="bg-black/50 hover:bg-black/70 active:scale-95 px-3 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-white text-center transition-all"
                 style={{ backdropFilter: 'blur(5px)' }}
               >
-                <p className="text-base md:text-lg font-bold">🪵 {isMobile ? 'Tap the log to sit' : 'Press F to sit'}</p>
-                <p className="text-xs md:text-sm text-white/80">Enjoy the campfire</p>
-              </div>
+                <p className="text-sm md:text-lg font-bold">{isMobile ? 'Tap to sit' : 'Press F to sit'}</p>
+                <p className="text-xs text-white/70">Enjoy the campfire</p>
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -3886,13 +3888,14 @@ export default function ILoveYouPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               className="absolute bottom-28 md:bottom-32 left-1/2 transform -translate-x-1/2 pointer-events-auto"
+              style={{ zIndex: 60 }}
             >
               <div 
-                className="bg-white/20 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-white text-center"
+                className="bg-white/20 px-2 py-2 md:px-4 md:py-3 rounded-lg text-white text-center"
                 style={{ backdropFilter: 'blur(10px)' }}
               >
                 {(jbIsSitting || beaIsSitting) ? (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1">
                     {/* Chat button for campfire chat */}
                     <button 
                       onClick={() => {
@@ -3915,13 +3918,13 @@ export default function ILoveYouPage() {
                         }
                         if (interactSoundRef.current) interactSoundRef.current();
                       }}
-                      className="px-4 py-2 bg-pink-500/60 hover:bg-pink-500/80 rounded-lg text-sm font-bold"
+                      className="px-3 py-1 bg-pink-500/60 hover:bg-pink-500/80 active:scale-95 rounded text-xs font-bold"
                     >
-                      💕 Chat with {currentCharacter === 'bea' ? 'JB' : 'Bea'}
+                      💕 Chat
                     </button>
                     <button 
                       onClick={() => setIsPlayerSitting(false)}
-                      className="px-4 py-1 bg-white/30 rounded-lg text-xs font-bold"
+                      className="px-3 py-1 bg-white/30 active:scale-95 rounded text-xs"
                     >
                       Stand Up
                     </button>
@@ -3929,7 +3932,7 @@ export default function ILoveYouPage() {
                 ) : (
                   <button 
                     onClick={() => setIsPlayerSitting(false)}
-                    className="px-4 py-2 bg-white/30 rounded-lg text-sm font-bold"
+                    className="px-3 py-1 bg-white/30 active:scale-95 rounded text-xs font-bold"
                   >
                     Stand Up
                   </button>
