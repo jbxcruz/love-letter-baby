@@ -2871,96 +2871,104 @@ function ChatBox({ isOpen, messages, onSendMessage, onClose, chatPartnerName, ch
   const lastPartnerMsg = messages.filter(m => m.sender === 'jb' || m.sender === 'bea' || m.sender === 'choco').pop();
   
   const chatOptions = [
-    { label: "👋 Hi!", category: "greetings" },
-    { label: "😄 Funny", category: "funny" },
-    { label: "💕 Compliment", category: "compliments" },
-    { label: "❤️ Love", category: "love" },
+    { label: "👋", category: "greetings" },
+    { label: "😄", category: "funny" },
+    { label: "💕", category: "compliments" },
+    { label: "❤️", category: "love" },
   ];
   
   return (
     <>
-      {/* Speech Bubble - appears near top of screen (centered on mobile) */}
+      {/* Speech Bubble - character response */}
       {lastPartnerMsg && (
         <motion.div
           key={lastPartnerMsg.text}
           initial={{ opacity: 0, scale: 0.8, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className={`absolute left-1/2 transform -translate-x-1/2 pointer-events-none px-2 ${
-            isMobile ? 'top-1/3 -translate-y-1/2' : 'top-24'
+          className={`absolute left-1/2 transform -translate-x-1/2 pointer-events-none ${
+            isMobile ? 'top-12' : 'top-24'
           }`}
           style={{ zIndex: 100 }}
         >
           <div 
-            className="relative px-3 py-2 md:px-6 md:py-4 rounded-xl md:rounded-2xl max-w-[280px] md:max-w-sm"
+            className={`relative rounded-lg ${isMobile ? 'px-2 py-1 max-w-[200px]' : 'px-6 py-4 rounded-2xl max-w-sm'}`}
             style={{ 
               backgroundColor: chatPartnerColor,
               boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
             }}
           >
             <div className="text-white text-center">
-              <span className="font-bold text-xs md:text-sm block mb-0.5 md:mb-1">{chatPartnerName}</span>
-              <span className="text-sm md:text-base">{lastPartnerMsg.text}</span>
+              <span className={`font-bold block ${isMobile ? 'text-[10px] mb-0' : 'text-sm mb-1'}`}>{chatPartnerName}</span>
+              <span className={isMobile ? 'text-xs' : 'text-base'}>{lastPartnerMsg.text}</span>
             </div>
             {/* Speech bubble tail */}
             <div 
-              className="absolute -bottom-2 md:-bottom-3 left-1/2 transform -translate-x-1/2 w-0 h-0"
+              className="absolute -bottom-1.5 md:-bottom-3 left-1/2 transform -translate-x-1/2 w-0 h-0"
               style={{
-                borderLeft: isMobile ? '8px solid transparent' : '12px solid transparent',
-                borderRight: isMobile ? '8px solid transparent' : '12px solid transparent',
-                borderTop: `${isMobile ? '8px' : '12px'} solid ${chatPartnerColor}`,
+                borderLeft: isMobile ? '6px solid transparent' : '12px solid transparent',
+                borderRight: isMobile ? '6px solid transparent' : '12px solid transparent',
+                borderTop: `${isMobile ? '6px' : '12px'} solid ${chatPartnerColor}`,
               }}
             />
           </div>
         </motion.div>
       )}
       
-      {/* Chat Options - at very bottom on mobile, above controls on desktop */}
+      {/* Chat Options - compact box below center on mobile */}
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 50 }}
-        className={`absolute left-1/2 transform -translate-x-1/2 w-full px-2 md:px-4 pointer-events-auto ${
-          isMobile ? 'bottom-1 max-w-[95%]' : 'bottom-24 max-w-md'
+        className={`absolute left-1/2 transform -translate-x-1/2 pointer-events-auto ${
+          isMobile ? 'bottom-16' : 'bottom-24 w-full max-w-md px-4'
         }`}
         style={{ zIndex: 100 }}
       >
-        <div className="rounded-xl md:rounded-2xl p-2 md:p-4" style={{ background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)' }}>
-          <div className="text-center text-white/70 text-xs md:text-sm mb-1 md:mb-3">
-            Talking to <span className="font-bold" style={{ color: chatPartnerColor }}>{chatPartnerName}</span>
-          </div>
-          
-          {/* Option buttons - horizontal row on mobile, grid on desktop */}
-          <div className={`${isMobile ? 'flex gap-1 mb-1' : 'grid grid-cols-2 gap-2 mb-3'}`}>
+        <div 
+          className={`${isMobile ? 'rounded-lg p-1.5' : 'rounded-2xl p-4'}`} 
+          style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}
+        >
+          {/* Option buttons */}
+          <div className={`flex gap-1 ${isMobile ? 'mb-1' : 'grid grid-cols-2 gap-2 mb-3'}`}>
             {chatOptions.map((option, i) => (
               <button
                 key={i}
                 onClick={() => onSendMessage(option.label, option.category)}
-                className={`rounded-lg md:rounded-xl text-white font-medium transition-all active:scale-95 ${
-                  isMobile ? 'flex-1 px-1 py-1.5 text-[10px]' : 'px-4 py-3 text-sm'
+                className={`rounded text-white font-medium transition-all active:scale-95 ${
+                  isMobile ? 'w-8 h-8 text-sm' : 'px-4 py-3 rounded-xl text-sm'
                 }`}
                 style={{ 
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  border: '1px solid rgba(255,255,255,0.2)'
+                  backgroundColor: 'rgba(255,255,255,0.2)',
                 }}
               >
                 {option.label}
               </button>
             ))}
+            {/* Bye button inline on mobile */}
+            {isMobile && (
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded text-white text-sm font-medium transition-all active:scale-95"
+                style={{ backgroundColor: 'rgba(239,68,68,0.7)' }}
+              >
+                ✕
+              </button>
+            )}
           </div>
           
-          {/* Goodbye button */}
-          <button
-            onClick={onClose}
-            className={`w-full rounded-lg md:rounded-xl text-white font-medium transition-all active:scale-95 ${
-              isMobile ? 'px-2 py-1.5 text-[10px]' : 'px-4 py-3 text-sm'
-            }`}
-            style={{ 
-              backgroundColor: 'rgba(239,68,68,0.6)',
-              border: '1px solid rgba(239,68,68,0.8)'
-            }}
-          >
-            👋 Bye!
-          </button>
+          {/* Goodbye button - desktop only */}
+          {!isMobile && (
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-3 rounded-xl text-white text-sm font-medium transition-all active:scale-95"
+              style={{ 
+                backgroundColor: 'rgba(239,68,68,0.6)',
+                border: '1px solid rgba(239,68,68,0.8)'
+              }}
+            >
+              👋 Bye!
+            </button>
+          )}
         </div>
       </motion.div>
     </>
