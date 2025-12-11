@@ -609,15 +609,23 @@ function PlayerLogIndicator({ position, isVisible }) {
 
 // Simple sitting logs - each character has assigned seat
 // Player = log3 (back), JB = log1 (left), Bea = log2 (right)
-function SittingLogs({ campfirePos, isNearCampfire, isPlayerSitting }) {
+function SittingLogs({ campfirePos, isNearCampfire, isPlayerSitting, onPlayerSit }) {
+  const [hoveredLog, setHoveredLog] = useState(null);
+  
   const logs = [
     { id: 'log1', localPos: [-1.5, 0.3, 0], rotation: [0, Math.PI / 4, 0], color: '#5a4a3a' },      // JB's log
     { id: 'log2', localPos: [1.5, 0.3, 0], rotation: [0, -Math.PI / 4, 0], color: '#4a3a2a' },      // Bea's log
-    { id: 'log3', localPos: [0, 0.3, 1.5], rotation: [0, 0, 0], color: '#5a4530' },                 // Player's log
+    { id: 'log3', localPos: [0, 0.3, 1.5], rotation: [0, 0, 0], color: '#5a4530', isPlayerLog: true }, // Player's log
   ];
   
   // Show green diamond above player's log (log3) when near and not sitting
   const showPlayerIndicator = isNearCampfire && !isPlayerSitting;
+  
+  const handleLogClick = (log) => {
+    if (log.isPlayerLog && isNearCampfire && !isPlayerSitting && onPlayerSit) {
+      onPlayerSit();
+    }
+  };
   
   return (
     <group position={campfirePos}>
@@ -626,9 +634,27 @@ function SittingLogs({ campfirePos, isNearCampfire, isPlayerSitting }) {
           key={log.id}
           position={log.localPos} 
           rotation={log.rotation}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleLogClick(log);
+          }}
+          onPointerOver={() => {
+            if (log.isPlayerLog && isNearCampfire && !isPlayerSitting) {
+              setHoveredLog(log.id);
+              document.body.style.cursor = 'pointer';
+            }
+          }}
+          onPointerOut={() => {
+            setHoveredLog(null);
+            document.body.style.cursor = 'default';
+          }}
         >
           <cylinderGeometry args={[0.3, 0.35, 0.6, 8]} />
-          <meshStandardMaterial color={log.color} roughness={0.8} />
+          <meshStandardMaterial 
+            color={hoveredLog === log.id ? '#7a6a5a' : log.color} 
+            roughness={0.8}
+            emissive={hoveredLog === log.id ? '#332211' : '#000000'}
+          />
         </mesh>
       ))}
       
@@ -2774,6 +2800,7 @@ function ParadiseScene({
         campfirePos={[-6, 0, 2]}
         isNearCampfire={isNearBench}
         isPlayerSitting={isPlayerSitting}
+        onPlayerSit={() => setIsPlayerSitting(true)}
       />
       <Garden position={[10, 0, 6]} />
       <ShootingStars />
@@ -2996,6 +3023,10 @@ export default function ILoveYouPage() {
   const [isTalking, setIsTalking] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   
+  // Mobile orientation
+  const [isMobile, setIsMobile] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
+  
   // Character switching
   const [currentCharacter, setCurrentCharacter] = useState('bea'); // Start as Bea
   const [switchCooldown, setSwitchCooldown] = useState(0);
@@ -3046,6 +3077,10 @@ export default function ILoveYouPage() {
   const mouseMovement = useRef({ x: 0, y: 0 });
   const isPointerLocked = useRef(false);
   const canvasRef = useRef(null);
+  
+  // Touch look refs
+  const touchStartRef = useRef({ x: 0, y: 0 });
+  const lastTouchRef = useRef({ x: 0, y: 0 });
   
   // Sound effects refs - using MP3 files
   const walkSoundRef = useRef(null);
@@ -3145,6 +3180,80 @@ export default function ILoveYouPage() {
     }, 3000); // 3 second loading screen
     return () => clearTimeout(timer);
   }, []);
+  
+  // Mobile and orientation detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
+    
+    const checkOrientation = () => {
+      setIsPortrait(window.innerHeight > window.innerWidth);
+    };
+    
+    checkMobile();
+    checkOrientation();
+    
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
+  
+  // Touch controls for looking around (swipe to look)
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const handleTouchStart = (e) => {
+      if (isChatOpen || isTransitioning || isLoading) return;
+      // Only use touches not on control buttons
+      const touch = e.touches[0];
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+    };
+    
+    const handleTouchMove = (e) => {
+      if (isChatOpen || isTransitioning || isLoading) return;
+      if (e.touches.length !== 1) return;
+      
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - lastTouchRef.current.x;
+      const deltaY = touch.clientY - lastTouchRef.current.y;
+      
+      // Update mouse movement for camera (sensitivity adjusted for touch)
+      mouseMovement.current.x += deltaX * 0.5;
+      mouseMovement.current.y += deltaY * 0.3;
+      
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+    };
+    
+    const handleTouchEnd = () => {
+      touchStartRef.current = { x: 0, y: 0 };
+      lastTouchRef.current = { x: 0, y: 0 };
+    };
+    
+    // Add listeners to the canvas area
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+      canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+      canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+    
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener('touchstart', handleTouchStart);
+        canvas.removeEventListener('touchmove', handleTouchMove);
+        canvas.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+  }, [isMobile, isChatOpen, isTransitioning, isLoading]);
   
   // Initialize sound effects
   useEffect(() => {
@@ -3584,6 +3693,33 @@ export default function ILoveYouPage() {
         )}
       </AnimatePresence>
       
+      {/* Mobile Portrait Warning - Rotate to Landscape */}
+      <AnimatePresence>
+        {isMobile && isPortrait && !isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] flex flex-col items-center justify-center"
+            style={{ backgroundColor: '#1a0a2e' }}
+          >
+            <motion.div
+              animate={{ rotate: [0, -90, -90, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+              className="text-6xl mb-6"
+            >
+              📱
+            </motion.div>
+            <p className="text-white text-xl font-bold text-center px-8">
+              Please rotate your device to landscape mode
+            </p>
+            <p className="text-white/60 text-sm mt-2 text-center px-8">
+              For the best experience in paradise 💕
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* UI Overlay */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Crosshair */}
@@ -3699,7 +3835,7 @@ export default function ILoveYouPage() {
                 className="bg-black/40 px-6 py-3 rounded-xl text-white text-center"
                 style={{ backdropFilter: 'blur(5px)' }}
               >
-                <p className="text-lg font-bold">🪵 Press F to sit</p>
+                <p className="text-lg font-bold">🪵 {isMobile ? 'Tap the log to sit' : 'Press F to sit'}</p>
                 <p className="text-sm text-white/80">Enjoy the campfire</p>
               </div>
             </motion.div>
@@ -3721,11 +3857,29 @@ export default function ILoveYouPage() {
               >
                 {(jbIsSitting || beaIsSitting) ? (
                   <>
-                    <p className="text-sm">Press <span className="font-bold">E</span> to chat with {currentCharacter === 'bea' ? 'JB' : 'Bea'} 💕</p>
-                    <p className="text-xs text-white/60 mt-1">Press <span className="font-bold">Space</span> to stand up</p>
+                    <p className="text-sm">{isMobile ? 'Tap' : 'Press'} <span className="font-bold">{isMobile ? 'character' : 'E'}</span> to chat with {currentCharacter === 'bea' ? 'JB' : 'Bea'} 💕</p>
+                    {isMobile ? (
+                      <button 
+                        onClick={() => setIsPlayerSitting(false)}
+                        className="mt-2 px-4 py-1 bg-white/30 rounded-lg text-sm font-bold pointer-events-auto"
+                      >
+                        Stand Up
+                      </button>
+                    ) : (
+                      <p className="text-xs text-white/60 mt-1">Press <span className="font-bold">Space</span> to stand up</p>
+                    )}
                   </>
                 ) : (
-                  <p className="text-sm">Press <span className="font-bold">Space</span> to stand up</p>
+                  isMobile ? (
+                    <button 
+                      onClick={() => setIsPlayerSitting(false)}
+                      className="px-4 py-2 bg-white/30 rounded-lg text-sm font-bold pointer-events-auto"
+                    >
+                      Stand Up
+                    </button>
+                  ) : (
+                    <p className="text-sm">Press <span className="font-bold">Space</span> to stand up</p>
+                  )
                 )}
               </div>
             </motion.div>
