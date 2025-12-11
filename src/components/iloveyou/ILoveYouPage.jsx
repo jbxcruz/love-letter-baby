@@ -2864,17 +2864,17 @@ function ParadiseScene({
 }
 
 // ============ CHAT BOX ============
-function ChatBox({ isOpen, messages, onSendMessage, onClose, chatPartnerName, chatPartnerColor }) {
+function ChatBox({ isOpen, messages, onSendMessage, onClose, chatPartnerName, chatPartnerColor, isMobile }) {
   if (!isOpen) return null;
   
   // Get the last message from the partner
   const lastPartnerMsg = messages.filter(m => m.sender === 'jb' || m.sender === 'bea' || m.sender === 'choco').pop();
   
   const chatOptions = [
-    { label: "👋 Say Hi!", category: "greetings" },
-    { label: "😄 Something funny", category: "funny" },
+    { label: "👋 Hi!", category: "greetings" },
+    { label: "😄 Funny", category: "funny" },
     { label: "💕 Compliment", category: "compliments" },
-    { label: "❤️ Say I love you", category: "love" },
+    { label: "❤️ Love", category: "love" },
   ];
   
   return (
@@ -2885,27 +2885,27 @@ function ChatBox({ isOpen, messages, onSendMessage, onClose, chatPartnerName, ch
           key={lastPartnerMsg.text}
           initial={{ opacity: 0, scale: 0.8, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="absolute top-24 left-1/2 transform -translate-x-1/2 pointer-events-none"
+          className="absolute top-16 md:top-24 left-1/2 transform -translate-x-1/2 pointer-events-none px-2"
           style={{ zIndex: 100 }}
         >
           <div 
-            className="relative px-6 py-4 rounded-2xl max-w-sm"
+            className="relative px-3 py-2 md:px-6 md:py-4 rounded-xl md:rounded-2xl max-w-[280px] md:max-w-sm"
             style={{ 
               backgroundColor: chatPartnerColor,
               boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
             }}
           >
             <div className="text-white text-center">
-              <span className="font-bold text-sm block mb-1">{chatPartnerName}</span>
-              <span className="text-base">{lastPartnerMsg.text}</span>
+              <span className="font-bold text-xs md:text-sm block mb-0.5 md:mb-1">{chatPartnerName}</span>
+              <span className="text-sm md:text-base">{lastPartnerMsg.text}</span>
             </div>
             {/* Speech bubble tail */}
             <div 
-              className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-0 h-0"
+              className="absolute -bottom-2 md:-bottom-3 left-1/2 transform -translate-x-1/2 w-0 h-0"
               style={{
-                borderLeft: '12px solid transparent',
-                borderRight: '12px solid transparent',
-                borderTop: `12px solid ${chatPartnerColor}`,
+                borderLeft: isMobile ? '8px solid transparent' : '12px solid transparent',
+                borderRight: isMobile ? '8px solid transparent' : '12px solid transparent',
+                borderTop: `${isMobile ? '8px' : '12px'} solid ${chatPartnerColor}`,
               }}
             />
           </div>
@@ -2917,21 +2917,21 @@ function ChatBox({ isOpen, messages, onSendMessage, onClose, chatPartnerName, ch
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 50 }}
-        className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4 pointer-events-auto"
+        className="absolute bottom-20 md:bottom-24 left-1/2 transform -translate-x-1/2 w-full max-w-xs md:max-w-md px-2 md:px-4 pointer-events-auto"
         style={{ zIndex: 100 }}
       >
-        <div className="rounded-2xl p-4" style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)' }}>
-          <div className="text-center text-white/70 text-sm mb-3">
+        <div className="rounded-xl md:rounded-2xl p-2 md:p-4" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}>
+          <div className="text-center text-white/70 text-xs md:text-sm mb-2 md:mb-3">
             Talking to <span className="font-bold" style={{ color: chatPartnerColor }}>{chatPartnerName}</span>
           </div>
           
           {/* Option buttons in grid */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="grid grid-cols-2 gap-1 md:gap-2 mb-2 md:mb-3">
             {chatOptions.map((option, i) => (
               <button
                 key={i}
                 onClick={() => onSendMessage(option.label, option.category)}
-                className="px-4 py-3 rounded-xl text-white text-sm font-medium transition-all hover:scale-105 active:scale-95"
+                className="px-2 py-2 md:px-4 md:py-3 rounded-lg md:rounded-xl text-white text-xs md:text-sm font-medium transition-all active:scale-95"
                 style={{ 
                   backgroundColor: 'rgba(255,255,255,0.15)',
                   border: '1px solid rgba(255,255,255,0.2)'
@@ -2945,13 +2945,13 @@ function ChatBox({ isOpen, messages, onSendMessage, onClose, chatPartnerName, ch
           {/* Goodbye button */}
           <button
             onClick={onClose}
-            className="w-full px-4 py-3 rounded-xl text-white text-sm font-medium transition-all hover:scale-105 active:scale-95"
+            className="w-full px-2 py-2 md:px-4 md:py-3 rounded-lg md:rounded-xl text-white text-xs md:text-sm font-medium transition-all active:scale-95"
             style={{ 
               backgroundColor: 'rgba(239,68,68,0.6)',
               border: '1px solid rgba(239,68,68,0.8)'
             }}
           >
-            👋 Goodbye!
+            👋 Bye!
           </button>
         </div>
       </motion.div>
@@ -3873,7 +3873,7 @@ export default function ILoveYouPage() {
                 className="bg-black/50 hover:bg-black/70 active:scale-95 px-3 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-white text-center transition-all"
                 style={{ backdropFilter: 'blur(5px)' }}
               >
-                <p className="text-sm md:text-lg font-bold">{isMobile ? 'Tap to sit' : 'Press F to sit'}</p>
+                <p className="text-sm md:text-lg font-bold">🪵 {isMobile ? 'Tap to sit' : 'Press F to sit'}</p>
                 <p className="text-xs text-white/70">Enjoy the campfire</p>
               </button>
             </motion.div>
@@ -3982,6 +3982,7 @@ export default function ILoveYouPage() {
               onClose={handleCloseChat}
               chatPartnerName={chatPartner.name}
               chatPartnerColor={chatPartner.color}
+              isMobile={isMobile}
             />
           )}
         </AnimatePresence>
