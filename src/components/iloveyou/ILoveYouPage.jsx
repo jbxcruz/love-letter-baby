@@ -2965,30 +2965,30 @@ function MobileControls({ keys, onJump }) {
   const handleTouchEnd = (key) => { keys.current[key] = false; };
   
   const buttonStyle = {
-    width: '40px',
-    height: '40px',
-    background: 'rgba(255,255,255,0.2)',
-    borderRadius: '8px',
+    width: '75px',
+    height: '75px',
+    background: 'rgba(255,255,255,0.25)',
+    borderRadius: '10px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: 'white',
-    fontSize: '16px',
+    fontSize: '18px',
     userSelect: 'none',
     touchAction: 'none',
   };
   
   const jumpButtonStyle = {
     ...buttonStyle,
-    width: '50px',
-    height: '50px',
-    background: 'rgba(255,255,255,0.3)',
-    fontSize: '12px',
+    width: '75px',
+    height: '75px',
+    background: 'rgba(255,255,255,0.35)',
+    fontSize: '13px',
     fontWeight: 'bold',
   };
   
   return (
-    <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end pointer-events-auto md:hidden" style={{ zIndex: 50 }}>
+    <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end pointer-events-auto md:hidden" style={{ zIndex: 50 }}>
       {/* Movement D-pad */}
       <div className="flex flex-col items-center gap-1">
         <button style={buttonStyle} onTouchStart={() => handleTouchStart('forward')} onTouchEnd={() => handleTouchEnd('forward')}>▲</button>
@@ -3252,9 +3252,9 @@ export default function ILoveYouPage() {
       const deltaX = touch.clientX - lastTouchRef.current.x;
       const deltaY = touch.clientY - lastTouchRef.current.y;
       
-      // Update mouse movement for camera (sensitivity adjusted for touch)
-      mouseMovement.current.x += deltaX * 0.5;
-      mouseMovement.current.y += deltaY * 0.3;
+      // Update mouse movement for camera (increased sensitivity for touch)
+      mouseMovement.current.x += deltaX * 0.8;
+      mouseMovement.current.y += deltaY * 0.5;
       
       lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
     };
@@ -3819,6 +3819,7 @@ export default function ILoveYouPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-16 pointer-events-auto"
+              style={{ zIndex: 60 }}
             >
               <button 
                 onClick={() => {
@@ -3842,16 +3843,16 @@ export default function ILoveYouPage() {
                   }
                   if (interactSoundRef.current) interactSoundRef.current();
                 }}
-                className="bg-black/60 hover:bg-black/80 px-6 py-3 rounded-xl text-white text-center transition-all hover:scale-105"
+                className="bg-black/60 hover:bg-black/80 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-white text-center transition-all hover:scale-105 active:scale-95"
               >
-                <p className="text-lg font-bold" style={{ 
+                <p className="text-base md:text-lg font-bold" style={{ 
                   color: isNearOther.target === 'choco' ? '#FFD700' : 
                          isNearOther.target === 'jb' ? '#2D8B2D' : '#8B5CF6' 
                 }}>
                   {isNearOther.target === 'choco' ? '🐱 Choco' : 
                    isNearOther.target === 'jb' ? '💚 JB' : '💜 Bea'}
                 </p>
-                <p className="text-sm text-white/80">Press E or tap to talk</p>
+                <p className="text-xs md:text-sm text-white/80">{isMobile ? 'Tap to talk' : 'Press E or tap to talk'}</p>
               </button>
             </motion.div>
           )}
@@ -3867,11 +3868,11 @@ export default function ILoveYouPage() {
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-16 pointer-events-none"
             >
               <div 
-                className="bg-black/40 px-6 py-3 rounded-xl text-white text-center"
+                className="bg-black/40 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-white text-center"
                 style={{ backdropFilter: 'blur(5px)' }}
               >
-                <p className="text-lg font-bold">🪵 {isMobile ? 'Tap the log to sit' : 'Press F to sit'}</p>
-                <p className="text-sm text-white/80">Enjoy the campfire</p>
+                <p className="text-base md:text-lg font-bold">🪵 {isMobile ? 'Tap the log to sit' : 'Press F to sit'}</p>
+                <p className="text-xs md:text-sm text-white/80">Enjoy the campfire</p>
               </div>
             </motion.div>
           )}
@@ -3884,37 +3885,54 @@ export default function ILoveYouPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute bottom-32 left-1/2 transform -translate-x-1/2 pointer-events-none"
+              className="absolute bottom-28 md:bottom-32 left-1/2 transform -translate-x-1/2 pointer-events-auto"
             >
               <div 
-                className="bg-white/20 px-6 py-3 rounded-xl text-white text-center"
+                className="bg-white/20 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl text-white text-center"
                 style={{ backdropFilter: 'blur(10px)' }}
               >
                 {(jbIsSitting || beaIsSitting) ? (
-                  <>
-                    <p className="text-sm">{isMobile ? 'Tap' : 'Press'} <span className="font-bold">{isMobile ? 'character' : 'E'}</span> to chat with {currentCharacter === 'bea' ? 'JB' : 'Bea'} 💕</p>
-                    {isMobile ? (
-                      <button 
-                        onClick={() => setIsPlayerSitting(false)}
-                        className="mt-2 px-4 py-1 bg-white/30 rounded-lg text-sm font-bold pointer-events-auto"
-                      >
-                        Stand Up
-                      </button>
-                    ) : (
-                      <p className="text-xs text-white/60 mt-1">Press <span className="font-bold">Space</span> to stand up</p>
-                    )}
-                  </>
-                ) : (
-                  isMobile ? (
+                  <div className="flex flex-col gap-2">
+                    {/* Chat button for campfire chat */}
+                    <button 
+                      onClick={() => {
+                        document.exitPointerLock();
+                        setIsChatOpen(true);
+                        setIsTalking(true);
+                        const target = currentCharacter === 'bea' ? 'jb' : 'bea';
+                        setChatTarget(target);
+                        if (target === 'jb') {
+                          setChatPartner({ name: 'JB', color: '#2D8B2D' });
+                          // Use campfire greeting
+                          const greeting = campfireConversations.jb[Math.floor(Math.random() * campfireConversations.jb.length)];
+                          setMessages([{ sender: 'jb', text: greeting }]);
+                          setDialogueText(greeting);
+                        } else {
+                          setChatPartner({ name: 'Bea', color: '#8B5CF6' });
+                          const greeting = campfireConversations.bea[Math.floor(Math.random() * campfireConversations.bea.length)];
+                          setMessages([{ sender: 'bea', text: greeting }]);
+                          setDialogueText(greeting);
+                        }
+                        if (interactSoundRef.current) interactSoundRef.current();
+                      }}
+                      className="px-4 py-2 bg-pink-500/60 hover:bg-pink-500/80 rounded-lg text-sm font-bold"
+                    >
+                      💕 Chat with {currentCharacter === 'bea' ? 'JB' : 'Bea'}
+                    </button>
                     <button 
                       onClick={() => setIsPlayerSitting(false)}
-                      className="px-4 py-2 bg-white/30 rounded-lg text-sm font-bold pointer-events-auto"
+                      className="px-4 py-1 bg-white/30 rounded-lg text-xs font-bold"
                     >
                       Stand Up
                     </button>
-                  ) : (
-                    <p className="text-sm">Press <span className="font-bold">Space</span> to stand up</p>
-                  )
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setIsPlayerSitting(false)}
+                    className="px-4 py-2 bg-white/30 rounded-lg text-sm font-bold"
+                  >
+                    Stand Up
+                  </button>
                 )}
               </div>
             </motion.div>
@@ -3968,8 +3986,8 @@ export default function ILoveYouPage() {
         {/* Mobile Controls */}
         <MobileControls keys={keys} onJump={() => { if (jumpSoundRef.current) jumpSoundRef.current(); }} />
         
-        {/* Menu button */}
-        <div className="absolute top-4 right-4 pointer-events-auto">
+        {/* Menu button - smaller on mobile */}
+        <div className="absolute top-2 right-2 md:top-4 md:right-4 pointer-events-auto scale-75 md:scale-100">
           <MenuButton onClick={handleMenuClick} visible={true} delay={0} />
         </div>
       </div>
