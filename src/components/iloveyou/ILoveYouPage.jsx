@@ -2466,7 +2466,7 @@ function BeaCharacter({ position, isNearby, isTalking, playerPos, isVisible, res
 }
 
 // ============ PLAYER CONTROLLER WITH MOUSE LOOK AND JUMPING ============
-function PlayerController({ setPlayerPos, setIsNearOther, setIsNearBench, keys, mouseMovement, isPointerLocked, currentCharacter, setPlayerYaw, resetKey, isPlayerSitting, setIsPlayerSitting, playerSittingPos, setOccupiedLogs, playerSittingLogId, setPlayerSittingLogId }) {
+function PlayerController({ setPlayerPos, setIsNearOther, setIsNearBench, keys, mouseMovement, isPointerLocked, currentCharacter, setPlayerYaw, resetKey, isPlayerSitting, setIsPlayerSitting, playerSittingPos, setOccupiedLogs, playerSittingLogId, setPlayerSittingLogId, isMobile }) {
   const { camera } = useThree();
   const velocity = useRef(new THREE.Vector3());
   const direction = useRef(new THREE.Vector3());
@@ -2528,8 +2528,8 @@ function PlayerController({ setPlayerPos, setIsNearOther, setIsNearBench, keys, 
       }
       
       // Still allow mouse look
-      if (isPointerLocked.current && mouseMovement.current) {
-        const sensitivity = 0.002;
+      if ((isPointerLocked.current || isMobile) && mouseMovement.current) {
+        const sensitivity = isMobile ? 0.004 : 0.002;
         yaw.current -= mouseMovement.current.x * sensitivity;
         pitch.current -= mouseMovement.current.y * sensitivity;
         pitch.current = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitch.current));
@@ -2601,9 +2601,9 @@ function PlayerController({ setPlayerPos, setIsNearOther, setIsNearBench, keys, 
     playerPos.current.x = Math.max(-35, Math.min(35, playerPos.current.x));
     playerPos.current.z = Math.max(-35, Math.min(35, playerPos.current.z));
     
-    // Mouse look (when pointer is locked)
-    if (isPointerLocked.current && mouseMovement.current) {
-      const sensitivity = 0.002;
+    // Mouse look (when pointer is locked OR on mobile with touch)
+    if ((isPointerLocked.current || isMobile) && mouseMovement.current) {
+      const sensitivity = isMobile ? 0.004 : 0.002;
       yaw.current -= mouseMovement.current.x * sensitivity;
       pitch.current -= mouseMovement.current.y * sensitivity;
       
@@ -2769,7 +2769,8 @@ function ParadiseScene({
   setPlayerSittingLogId,
   onSitStateChange,
   jbIsSitting,
-  beaIsSitting
+  beaIsSitting,
+  isMobile
 }) {
   // Player always sits on their assigned log (back log)
   const playerSittingPos = campfireLogPositions.player;
@@ -2856,6 +2857,7 @@ function ParadiseScene({
         setOccupiedLogs={setOccupiedLogs}
         playerSittingLogId={playerSittingLogId}
         setPlayerSittingLogId={setPlayerSittingLogId}
+        isMobile={isMobile}
       />
     </>
   );
@@ -2963,30 +2965,31 @@ function MobileControls({ keys, onJump }) {
   const handleTouchEnd = (key) => { keys.current[key] = false; };
   
   const buttonStyle = {
-    width: '50px',
-    height: '50px',
+    width: '40px',
+    height: '40px',
     background: 'rgba(255,255,255,0.2)',
-    borderRadius: '10px',
+    borderRadius: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: 'white',
-    fontSize: '20px',
+    fontSize: '16px',
     userSelect: 'none',
     touchAction: 'none',
   };
   
   const jumpButtonStyle = {
     ...buttonStyle,
-    width: '60px',
-    height: '60px',
+    width: '50px',
+    height: '50px',
     background: 'rgba(255,255,255,0.3)',
-    fontSize: '14px',
+    fontSize: '12px',
     fontWeight: 'bold',
   };
   
   return (
-    <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-auto md:hidden" style={{ zIndex: 50 }}>
+    <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end pointer-events-auto md:hidden" style={{ zIndex: 50 }}>
+      {/* Movement D-pad */}
       <div className="flex flex-col items-center gap-1">
         <button style={buttonStyle} onTouchStart={() => handleTouchStart('forward')} onTouchEnd={() => handleTouchEnd('forward')}>▲</button>
         <div className="flex gap-1">
@@ -2996,19 +2999,14 @@ function MobileControls({ keys, onJump }) {
         </div>
       </div>
       
-      <div className="flex flex-col items-center gap-2">
-        <button 
-          style={jumpButtonStyle} 
-          onTouchStart={() => { handleTouchStart('jump'); if (onJump) onJump(); }} 
-          onTouchEnd={() => handleTouchEnd('jump')}
-        >
-          JUMP
-        </button>
-        <div className="flex gap-2">
-          <button style={buttonStyle} onTouchStart={() => handleTouchStart('lookLeft')} onTouchEnd={() => handleTouchEnd('lookLeft')}>↺</button>
-          <button style={buttonStyle} onTouchStart={() => handleTouchStart('lookRight')} onTouchEnd={() => handleTouchEnd('lookRight')}>↻</button>
-        </div>
-      </div>
+      {/* Jump button only - look is handled by touch swipe */}
+      <button 
+        style={jumpButtonStyle} 
+        onTouchStart={() => { handleTouchStart('jump'); if (onJump) onJump(); }} 
+        onTouchEnd={() => handleTouchEnd('jump')}
+      >
+        JUMP
+      </button>
     </div>
   );
 }
@@ -3205,6 +3203,34 @@ export default function ILoveYouPage() {
       window.removeEventListener('orientationchange', checkOrientation);
     };
   }, []);
+  
+  // Request fullscreen on mobile when loading finishes
+  useEffect(() => {
+    if (isMobile && !isLoading && !isPortrait) {
+      const requestFullscreen = () => {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+          elem.requestFullscreen().catch(() => {});
+        } else if (elem.webkitRequestFullscreen) {
+          elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+          elem.msRequestFullscreen();
+        }
+      };
+      
+      // Request fullscreen on first user interaction
+      const handleFirstTouch = () => {
+        requestFullscreen();
+        document.removeEventListener('touchstart', handleFirstTouch);
+      };
+      
+      document.addEventListener('touchstart', handleFirstTouch, { once: true });
+      
+      return () => {
+        document.removeEventListener('touchstart', handleFirstTouch);
+      };
+    }
+  }, [isMobile, isLoading, isPortrait]);
   
   // Touch controls for looking around (swipe to look)
   useEffect(() => {
@@ -3608,6 +3634,7 @@ export default function ILoveYouPage() {
               onSitStateChange={handleSitStateChange}
               jbIsSitting={jbIsSitting}
               beaIsSitting={beaIsSitting}
+              isMobile={isMobile}
             />
           </Suspense>
         </Canvas>
@@ -3729,9 +3756,9 @@ export default function ILoveYouPage() {
           </div>
         )}
         
-        {/* Current character indicator & buttons */}
+        {/* Current character indicator & buttons - Desktop only */}
         {!isTransitioning && (
-        <div className="absolute top-4 left-4 text-white text-sm bg-black/40 px-3 py-2 rounded-lg pointer-events-auto">
+        <div className="absolute top-4 left-4 text-white text-sm bg-black/40 px-3 py-2 rounded-lg pointer-events-auto hidden md:block">
           <div className="flex items-center gap-3 mb-2">
             <span className="font-bold" style={{ color: currentCharacter === 'bea' ? '#8B5CF6' : '#2D8B2D' }}>
               Playing as: {currentCharacter === 'bea' ? '💜 Bea' : '💚 JB'}
@@ -3765,14 +3792,22 @@ export default function ILoveYouPage() {
             <span className="text-xs text-white/50">JB comes to you!</span>
           </div>
           )}
-          <p className="hidden md:block text-xs text-white/70">
+          <p className="text-xs text-white/70">
             {isLocked 
               ? currentCharacter === 'bea'
                 ? 'WASD - Move | Space - Jump | Q - Switch | V - Whistle | E - Talk'
                 : 'WASD - Move | Space - Jump | Q - Switch | E - Talk'
               : 'Click to enable mouse look'}
           </p>
-          <p className="md:hidden text-xs text-white/70">Use controls below</p>
+        </div>
+        )}
+        
+        {/* Mobile character indicator - compact */}
+        {!isTransitioning && (
+        <div className="absolute top-2 left-2 md:hidden">
+          <span className="text-xs font-bold px-2 py-1 rounded bg-black/40" style={{ color: currentCharacter === 'bea' ? '#8B5CF6' : '#2D8B2D' }}>
+            {currentCharacter === 'bea' ? '💜 Bea' : '💚 JB'}
+          </span>
         </div>
         )}
         
@@ -3888,14 +3923,14 @@ export default function ILoveYouPage() {
         
         {/* Mobile switch button */}
         {!isTransitioning && (
-        <div className="absolute top-20 left-4 pointer-events-auto md:hidden flex flex-col gap-2">
+        <div className="absolute top-12 left-2 pointer-events-auto md:hidden flex flex-col gap-1">
           <button
             onClick={handleCharacterSwitch}
             disabled={!canSwitch || isChatOpen}
-            className={`px-3 py-2 rounded-lg text-white text-sm font-bold ${
+            className={`px-2 py-1 rounded text-white text-xs font-bold ${
               canSwitch && !isChatOpen
-                ? 'bg-purple-600'
-                : 'bg-gray-600 opacity-50'
+                ? 'bg-purple-600/80'
+                : 'bg-gray-600/60'
             }`}
           >
             {canSwitch ? '🔄 Switch' : `⏱️ ${switchCooldown}s`}
@@ -3904,10 +3939,10 @@ export default function ILoveYouPage() {
           <button
             onClick={handleSpecialAbility}
             disabled={!canUseAbility || isChatOpen}
-            className={`px-3 py-2 rounded-lg text-white text-sm font-bold ${
+            className={`px-2 py-1 rounded text-white text-xs font-bold ${
               canUseAbility && !isChatOpen
-                ? 'bg-purple-500'
-                : 'bg-gray-600 opacity-50'
+                ? 'bg-purple-500/80'
+                : 'bg-gray-600/60'
             }`}
           >
             {canUseAbility ? '🎵 Whistle' : `⏱️ ${abilityCooldown}s`}
