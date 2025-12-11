@@ -7,13 +7,13 @@ import HoneybunchPage from './components/honeybunch/HoneybunchPage';
 import ILoveYouPage from './components/iloveyou/ILoveYouPage';
 import { useEffect, useState } from 'react';
 
-// InstallButton Component
+// Android Install Button
 function InstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
     window.addEventListener("beforeinstallprompt", (e) => {
-      e.preventDefault(); // Prevent default Chrome prompt
+      e.preventDefault();
       setDeferredPrompt(e);
     });
   }, []);
@@ -50,6 +50,41 @@ function InstallButton() {
   );
 }
 
+// iOS Add to Home Screen Tip
+function IOSInstallTip() {
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const standalone = window.navigator.standalone; // iOS standalone mode
+    if ((/iphone|ipad|ipod/.test(userAgent)) && !standalone) {
+      setIsIOS(true);
+    }
+  }, []);
+
+  if (!isIOS) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: "20px",
+        left: "10px",
+        right: "10px",
+        padding: "10px",
+        background: "#ff8fb1",
+        color: "#fff",
+        textAlign: "center",
+        borderRadius: "8px",
+        zIndex: 1000,
+        fontSize: "14px",
+      }}
+    >
+      Install this app on your iPhone: Tap the <strong>Share</strong> button and select <strong>"Add to Home Screen"</strong>
+    </div>
+  );
+}
+
 // Animated Routes
 function AnimatedRoutes() {
   const location = useLocation();
@@ -71,7 +106,8 @@ function App() {
   return (
     <BrowserRouter>
       <AnimatedRoutes />
-      <InstallButton /> {/* Add the install button here */}
+      <InstallButton />   {/* Android install button */}
+      <IOSInstallTip />   {/* iOS tip banner */}
     </BrowserRouter>
   );
 }
